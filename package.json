@@ -1,22 +1,136 @@
 {
   "name": "remote-beyond",
   "displayName": "remote-beyond",
-  "description": "Forward non-public remote services to local interface.",
+  "description": "Forward non-public remote services to the local interface",
+  "publisher": "novemus",
   "version": "0.0.1",
+  "icon": "resources/webier.png",
+  "license": "MIT",
   "engines": {
     "vscode": "^1.105.0"
   },
   "categories": [
     "Other"
   ],
-  "activationEvents": [],
+  "activationEvents": [
+
+  ],
   "main": "./dist/extension.js",
   "contributes": {
     "commands": [
       {
-        "command": "remote-beyond.helloWorld",
-        "title": "Hello World"
+        "command": "remoteBeyond.startup",
+        "title": "Init workspace context..."
+      },
+      {
+        "command": "remoteBeyond.createOffer",
+        "title": "Create an offer..."
+      },
+      {
+        "command": "remoteBeyond.uploadOffer",
+        "title": "Upload an offer..."
+      },
+      {
+        "command": "remoteBeyond.startService",
+        "title": "Start service",
+        "icon": "$(run)"
+      },
+      {
+        "command": "remoteBeyond.stopService",
+        "title": "Stop service",
+        "icon": "$(stop-circle)"
+      },
+      {
+        "command": "remoteBeyond.addService",
+        "title": "Add service",
+        "icon": "$(new-file)"
+      },
+      {
+        "command": "remoteBeyond.delService",
+        "title": "Delete service",
+        "icon": "$(notebook-delete-cell)"
+      },
+      {
+        "command": "remoteBeyond.editService",
+        "title": "Edit service",
+        "icon": "$(settings-edit)"
       }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "remoteBeyond",
+          "title": "Remote Beyond",
+          "icon": "resources/mono.png"
+        }
+      ]
+    },
+    "views": {
+      "remoteBeyond": [
+        {
+          "id": "webpierStartup",
+          "name": "Startup",
+          "icon": "ports-open-browser-icon",
+          "when": "!context.initialized"
+        },
+        {
+          "id": "webpierImport",
+          "name": "Import",
+          "icon": "ports-open-browser-icon",
+          "when": "context.initialized"
+        },
+        {
+          "id": "webpierExport",
+          "name": "Export",
+          "icon": "ports-open-browser-icon",
+          "when": "context.initialized"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "remoteBeyond.createOffer",
+          "when": "view == webpierExport"
+        },
+        {
+          "command": "remoteBeyond.uploadOffer",
+          "when": "view == webpierImport"
+        },
+        {
+          "command": "remoteBeyond.addService",
+          "when": "view == webpierImport || view == webpierExport",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "remoteBeyond.startService",
+          "when": "viewItem === 'webpier.asleep.service'",
+          "group": "inline"
+        },
+        {
+          "command": "remoteBeyond.stopService",
+          "when": "viewItem === 'webpier.active.service'",
+          "group": "inline"
+        },
+        {
+          "command": "remoteBeyond.editService",
+          "when": "viewItem === 'webpier.active.service' || viewItem === 'webpier.asleep.service'",
+          "group": "inline"
+        },
+        {
+          "command": "remoteBeyond.delService",
+          "when": "viewItem === 'webpier.active.service' || viewItem === 'webpier.asleep.service'",
+          "group": "inline"
+        }
+      ]
+    },
+    "viewsWelcome": [
+			{
+				"view": "webpierStartup",
+				"contents": "To get started you need to install [WebPier](https://github.com/novemus/webpier/releases/latest) application and define the webpier identity wich consists from the Owner and Pier identifiers. The Owner name should be an email address, if you want to use Email as the rendezvous in addition to DHT network, and the Pier name must be unique for the Owner. Then you can setup preferred rendezvous service and define a STUN server in the extension setting.\n[Init WebPier Context](command:remoteBeyond.startup)"
+			}
     ]
   },
   "scripts": {

@@ -1,26 +1,50 @@
-// The module 'vscode' contains the VS Code extensibility API
-// Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
+import { ServiceStatus, WebpierService, WebpierDataProvider } from './webpierDataProvider';
 
-// This method is called when your extension is activated
-// Your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
 
-	// Use the console to output diagnostic information (console.log) and errors (console.error)
-	// This line of code will only be executed once when your extension is activated
-	console.log('Congratulations, your extension "remote-beyond" is now active!');
+	vscode.commands.executeCommand('setContext', 'context.initialized', true);
 
-	// The command has been defined in the package.json file
-	// Now provide the implementation of the command with registerCommand
-	// The commandId parameter must match the command field in package.json
-	const disposable = vscode.commands.registerCommand('remote-beyond.helloWorld', () => {
-		// The code you place here will be executed every time your command is executed
-		// Display a message box to the user
-		vscode.window.showInformationMessage('Hello World from remote-beyond!');
+	vscode.window.createTreeView('webpierImport', {
+		treeDataProvider: new WebpierDataProvider(context, true)
 	});
 
-	context.subscriptions.push(disposable);
+	vscode.window.createTreeView('webpierExport', {
+		treeDataProvider: new WebpierDataProvider(context, false)
+	});
+
+	context.subscriptions.push(vscode.commands.registerCommand('remoteBeyond.startService', (item: WebpierService) => {
+		item.setStatus(ServiceStatus.Lonely, []);
+		item.refresh();
+	}));
+
+	context.subscriptions.push(vscode.commands.registerCommand('remoteBeyond.stopService', (item: WebpierService) => {
+		item.setStatus(ServiceStatus.Asleep, []);
+		item.refresh();
+	}));
+
+	context.subscriptions.push(vscode.commands.registerCommand('remoteBeyond.startup', async () => {
+		const owner = await vscode.window.showInputBox({
+			value: '',
+			placeHolder: 'Setup the Owner identifier',
+			validateInput: text => {
+				return /^[*/\\<>:|?\s]+$/.test(text) ? 'Don\'t use the following symbols: [*/\\<>:|? ]' : null;
+			}
+		});
+
+		vscode.window.showInformationMessage(`Owner: ${owner}`);
+
+		const pier = await vscode.window.showInputBox({
+			value: '',
+			placeHolder: 'Setup the Pier identifier',
+			validateInput: text => {
+				return /^[*/\\<>:|?\s]+$/.test(text) ? 'Don\'t use the following symbols: [*/\\<>:|? ]' : null;
+			}
+		});
+		vscode.window.showInformationMessage(`Pier: ${pier}`);
+	}));
+
+	console.log('Extension "remote-beyond" is now active!');
 }
 
-// This method is called when your extension is deactivated
 export function deactivate() {}
