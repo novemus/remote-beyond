@@ -1,10 +1,43 @@
 import * as vscode from 'vscode';
 import { ServiceStatus, WebpierService, WebpierDataProvider } from './webpierDataProvider';
-import { ViewProvider } from './viewProvider';
+import { WebpierServiceEditor } from './webpierServiceEditor';
 
-export function activate(context: vscode.ExtensionContext) {
+async function loadExternalConfig(externalConfigPath: string): Promise<any> {
+    if (!vscode.workspace.workspaceFolders) {
+        return {}; // No workspace, skip
+    }
+    const workspaceRoot = vscode.workspace.workspaceFolders[0].uri;
+    const configUri = vscode.Uri.joinPath(workspaceRoot, externalConfigPath);
 
-	vscode.commands.executeCommand('setContext', 'context.initialized', true);
+    try {
+        const data = await vscode.workspace.fs.readFile(configUri);
+        return JSON.parse(data.toString());
+    } catch (error) {
+        console.warn(`Could not load external config from ${externalConfigPath}:`, error);
+        return {}; // File not found or invalid, return empty object
+    }
+}
+
+export async function activate(context: vscode.ExtensionContext) {
+    // Get VSCode configuration
+    const config = vscode.workspace.getConfiguration('remoteBeyond');
+    const externalConfigPath = config.get<string>('externalConfigPath', './remote-beyond-config.json');
+
+    // Load external config and merge (external overrides VSCode settings)
+    const externalConfig = await loadExternalConfig(externalConfigPath);
+    const mergedConfig = {
+        owner: externalConfig.owner ?? config.get<string>('owner', ''),
+        pier: externalConfig.pier ?? config.get<string>('pier', ''),
+        service: externalConfig.service ?? config.get<string>('service', 'ssh'),
+        address: externalConfig.address ?? config.get<string>('address', '127.0.0.1:22'),
+        gateway: externalConfig.gateway ?? config.get<string>('gateway', '0.0.0.0:0'),
+        autostart: externalConfig.autostart ?? config.get<boolean>('autostart', true),
+        obscure: externalConfig.obscure ?? config.get<boolean>('obscure', true),
+        rendezvous: externalConfig.rendezvous ?? config.get<string>('rendezvous', '')
+    };
+
+    vscode.commands.executeCommand('setContext', 'context.initialized', true);
+    vscode.commands.executeCommand('setContext', 'context.editor', mergedConfig);
 
 	vscode.window.createTreeView('webpierImport', {
 		treeDataProvider: new WebpierDataProvider(context, true)
@@ -14,10 +47,10 @@ export function activate(context: vscode.ExtensionContext) {
 		treeDataProvider: new WebpierDataProvider(context, false)
 	});
 
-	// Register the ViewProvider
-	const viewProvider = new ViewProvider(context.extensionUri);
+	// Register the WebpierServiceEditor
+	const viewProvider = new WebpierServiceEditor(context.extensionUri);
 	context.subscriptions.push(
-		vscode.window.registerWebviewViewProvider(ViewProvider.viewType, viewProvider)
+		vscode.window.registerWebviewViewProvider(WebpierServiceEditor.viewType, viewProvider)
 	);
 
 	context.subscriptions.push(vscode.commands.registerCommand('remoteBeyond.startService', (item: WebpierService) => {

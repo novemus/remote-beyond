@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 
-export class ViewProvider implements vscode.WebviewViewProvider {
+export class WebpierServiceEditor implements vscode.WebviewViewProvider {
     public static readonly viewType = 'webpierEditor';
     private view?: vscode.WebviewView;
 

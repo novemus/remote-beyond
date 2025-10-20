@@ -17,6 +17,56 @@
   ],
   "main": "./dist/extension.js",
   "contributes": {
+    "configuration": {
+      "title": "Remote Beyond",
+      "properties": {
+        "remoteBeyond.owner": {
+          "type": "string",
+          "default": "",
+          "description": "The Owner identifier (e.g., an email address)."
+        },
+        "remoteBeyond.pier": {
+          "type": "string",
+          "default": "",
+          "description": "The Pier identifier (must be unique for the Owner)."
+        },
+        "remoteBeyond.service": {
+          "type": "string",
+          "default": "ssh",
+          "description": "The service type (e.g., ssh)."
+        },
+        "remoteBeyond.address": {
+          "type": "string",
+          "default": "127.0.0.1:22",
+          "description": "The service address."
+        },
+        "remoteBeyond.gateway": {
+          "type": "string",
+          "default": "0.0.0.0:0",
+          "description": "The gateway address."
+        },
+        "remoteBeyond.autostart": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether to autostart the service."
+        },
+        "remoteBeyond.obscure": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether to obscure the service."
+        },
+        "remoteBeyond.rendezvous": {
+          "type": "string",
+          "default": "",
+          "description": "The rendezvous service."
+        },
+        "remoteBeyond.externalConfigPath": {
+          "type": "string",
+          "default": "./remote-beyond-config.json",
+          "description": "Path to an external JSON config file (relative to workspace root)."
+        }
+      }
+    },
     "commands": [
       {
         "command": "remoteBeyond.startup",
@@ -88,7 +138,8 @@
         {
 					"type": "webview",
 					"id": "webpierEditor",
-					"name": "Details"
+					"name": "Details",
+          "when": "context.editor"
 				}
       ]
     },
