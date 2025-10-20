@@ -47,7 +47,6 @@ export async function activate(context: vscode.ExtensionContext) {
 		treeDataProvider: new WebpierDataProvider(context, false)
 	});
 
-	// Register the WebpierServiceEditor
 	const viewProvider = new WebpierServiceEditor(context.extensionUri, mergedConfig);
 	context.subscriptions.push(
 		vscode.window.registerWebviewViewProvider(WebpierServiceEditor.viewType, viewProvider)
@@ -87,6 +86,31 @@ export async function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(vscode.commands.registerCommand('remote-beyond.closeEditor', async () => {
 		vscode.commands.executeCommand('setContext', 'context.editor', null);
 		vscode.window.showInformationMessage('remote-beyond.closeEditor');
+	}));
+
+	context.subscriptions.push(vscode.commands.registerCommand('remote-beyond.uploadOffer', async () => {
+		const uri = await vscode.window.showOpenDialog({
+			canSelectFiles: true,
+			title: "Select the WebPier offer"
+		});
+
+		vscode.window.showInformationMessage(`Offer: ${uri}`);
+	}));
+
+	context.subscriptions.push(vscode.commands.registerCommand('remote-beyond.createOffer', async () => {
+		const select = await vscode.window.showQuickPick([{ label: '127.0.0.1:22', description: 'ssh', detail: 'Rendezvous: Email' }, { label: '127.0.0.1:3389', description: 'rdp', detail: 'Rendezvous: DHT'}], {
+			title: 'sergey-nine@yandex.ru/antique',
+			placeHolder: 'Select local services to export',
+			canPickMany: true
+		});
+
+		vscode.window.showInformationMessage(`Services: ${select}`);
+
+		const uri = await vscode.window.showSaveDialog({
+			title: "Save the WebPier offer"
+		});
+
+		vscode.window.showInformationMessage(`Offer: ${uri}`);
 	}));
 
 	console.log('Extension "remote-beyond" is now active!');

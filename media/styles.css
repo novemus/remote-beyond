@@ -1,0 +1,96 @@
+body {
+    padding: 10px;
+    font-family: var(--vscode-font-family);
+    color: var(--vscode-foreground);
+    background-color: var(--vscode-sideBar-background);
+}
+.form-container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+td {
+    padding: 6px 8px;
+    vertical-align: middle;
+}
+td:first-child {
+    width: 30%;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--vscode-foreground);
+}
+td:last-child {
+    width: 70%;
+}
+input[type="text"]:disabled {
+    color: var(--vscode-disabledForeground);
+}
+input[type="text"] {
+    width: 100%;
+    padding: 6px 8px;
+    background-color: var(--vscode-input-background);
+    color: var(--vscode-input-foreground);
+    border: 1px solid var(--vscode-input-border);
+    border-radius: 2px;
+    font-size: 13px;
+    font-family: var(--vscode-font-family);
+    box-sizing: border-box;
+}
+input[type="text"]:focus {
+    outline: 1px solid var(--vscode-focusBorder);
+    border-color: var(--vscode-focusBorder);
+}
+input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    margin-bottom: 10px;
+}
+input[type="checkbox"]:disabled {
+    color: var(--vscode-disabledForeground);
+}
+select {
+    width: 100%;
+    padding: 6px 8px;
+    background-color: var(--vscode-dropdown-background);
+    color: var(--vscode-dropdown-foreground);
+    border: 1px solid var(--vscode-dropdown-border);
+    border-radius: 2px;
+    font-size: 13px;
+    font-family: var(--vscode-font-family);
+    cursor: pointer;
+    box-sizing: border-box;
+}
+select:focus {
+    outline: 1px solid var(--vscode-focusBorder);
+    border-color: var(--vscode-focusBorder);
+}
+select:disabled {
+    color: var(--vscode-disabledForeground);
+}
+button {
+    margin-top: 8px;
+    padding: 8px 14px;
+    background-color: var(--vscode-button-background);
+    color: var(--vscode-button-foreground);
+    border: none;
+    border-radius: 2px;
+    cursor: pointer;
+    font-size: 13px;
+    font-family: var(--vscode-font-family);
+    font-weight: 500;
+}
+button:hover {
+    background-color: var(--vscode-button-hoverBackground);
+}
+button:active {
+    background-color: var(--vscode-button-hoverBackground);
+    opacity: 0.9;
+}
+.hidden {
+    display: none;
+}
