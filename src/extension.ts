@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { ServiceStatus, WebpierService, WebpierDataProvider } from './webpierDataProvider';
+import { ViewProvider } from './viewProvider';
 
 export function activate(context: vscode.ExtensionContext) {
 
@@ -12,6 +13,12 @@ export function activate(context: vscode.ExtensionContext) {
 	vscode.window.createTreeView('webpierExport', {
 		treeDataProvider: new WebpierDataProvider(context, false)
 	});
+
+	// Register the ViewProvider
+	const viewProvider = new ViewProvider(context.extensionUri);
+	context.subscriptions.push(
+		vscode.window.registerWebviewViewProvider(ViewProvider.viewType, viewProvider)
+	);
 
 	context.subscriptions.push(vscode.commands.registerCommand('remoteBeyond.startService', (item: WebpierService) => {
 		item.setStatus(ServiceStatus.Lonely, []);

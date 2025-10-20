@@ -4,7 +4,7 @@
   "description": "Forward non-public remote services to the local interface",
   "publisher": "novemus",
   "version": "0.0.1",
-  "icon": "resources/webier.png",
+  "icon": "resources/webpier.png",
   "license": "MIT",
   "engines": {
     "vscode": "^1.105.0"
@@ -84,7 +84,12 @@
           "name": "Export",
           "icon": "ports-open-browser-icon",
           "when": "context.initialized"
-        }
+        },
+        {
+					"type": "webview",
+					"id": "webpierEditor",
+					"name": "Details"
+				}
       ]
     },
     "menus": {
