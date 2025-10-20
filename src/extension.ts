@@ -20,14 +20,14 @@ async function loadExternalConfig(externalConfigPath: string): Promise<any> {
 
 export async function activate(context: vscode.ExtensionContext) {
     // Get VSCode configuration
-    const config = vscode.workspace.getConfiguration('remoteBeyond');
+    const config = vscode.workspace.getConfiguration('remote-beyond');
     const externalConfigPath = config.get<string>('externalConfigPath', './remote-beyond-config.json');
 
     // Load external config and merge (external overrides VSCode settings)
     const externalConfig = await loadExternalConfig(externalConfigPath);
     const mergedConfig = {
-        owner: externalConfig.owner ?? config.get<string>('owner', ''),
-        pier: externalConfig.pier ?? config.get<string>('pier', ''),
+        owner: externalConfig.owner ?? config.get<string>('owner', 'sergey-nine@yandex.com'),
+        pier: externalConfig.pier ?? config.get<string>('pier', 'antique'),
         service: externalConfig.service ?? config.get<string>('service', 'ssh'),
         address: externalConfig.address ?? config.get<string>('address', '127.0.0.1:22'),
         gateway: externalConfig.gateway ?? config.get<string>('gateway', '0.0.0.0:0'),
@@ -48,22 +48,22 @@ export async function activate(context: vscode.ExtensionContext) {
 	});
 
 	// Register the WebpierServiceEditor
-	const viewProvider = new WebpierServiceEditor(context.extensionUri);
+	const viewProvider = new WebpierServiceEditor(context.extensionUri, mergedConfig);
 	context.subscriptions.push(
 		vscode.window.registerWebviewViewProvider(WebpierServiceEditor.viewType, viewProvider)
 	);
 
-	context.subscriptions.push(vscode.commands.registerCommand('remoteBeyond.startService', (item: WebpierService) => {
+	context.subscriptions.push(vscode.commands.registerCommand('remote-beyond.startService', (item: WebpierService) => {
 		item.setStatus(ServiceStatus.Lonely, []);
 		item.refresh();
 	}));
 
-	context.subscriptions.push(vscode.commands.registerCommand('remoteBeyond.stopService', (item: WebpierService) => {
+	context.subscriptions.push(vscode.commands.registerCommand('remote-beyond.stopService', (item: WebpierService) => {
 		item.setStatus(ServiceStatus.Asleep, []);
 		item.refresh();
 	}));
 
-	context.subscriptions.push(vscode.commands.registerCommand('remoteBeyond.startup', async () => {
+	context.subscriptions.push(vscode.commands.registerCommand('remote-beyond.startup', async () => {
 		const owner = await vscode.window.showInputBox({
 			value: '',
 			placeHolder: 'Setup the Owner identifier',
@@ -82,6 +82,11 @@ export async function activate(context: vscode.ExtensionContext) {
 			}
 		});
 		vscode.window.showInformationMessage(`Pier: ${pier}`);
+	}));
+
+	context.subscriptions.push(vscode.commands.registerCommand('remote-beyond.closeEditor', async () => {
+		vscode.commands.executeCommand('setContext', 'context.editor', null);
+		vscode.window.showInformationMessage('remote-beyond.closeEditor');
 	}));
 
 	console.log('Extension "remote-beyond" is now active!');

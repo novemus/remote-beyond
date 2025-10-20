@@ -20,47 +20,47 @@
     "configuration": {
       "title": "Remote Beyond",
       "properties": {
-        "remoteBeyond.owner": {
+        "remote-beyond.owner": {
           "type": "string",
           "default": "",
           "description": "The Owner identifier (e.g., an email address)."
         },
-        "remoteBeyond.pier": {
+        "remote-beyond.pier": {
           "type": "string",
           "default": "",
           "description": "The Pier identifier (must be unique for the Owner)."
         },
-        "remoteBeyond.service": {
+        "remote-beyond.service": {
           "type": "string",
           "default": "ssh",
           "description": "The service type (e.g., ssh)."
         },
-        "remoteBeyond.address": {
+        "remote-beyond.address": {
           "type": "string",
           "default": "127.0.0.1:22",
           "description": "The service address."
         },
-        "remoteBeyond.gateway": {
+        "remote-beyond.gateway": {
           "type": "string",
           "default": "0.0.0.0:0",
           "description": "The gateway address."
         },
-        "remoteBeyond.autostart": {
+        "remote-beyond.autostart": {
           "type": "boolean",
           "default": true,
           "description": "Whether to autostart the service."
         },
-        "remoteBeyond.obscure": {
+        "remote-beyond.obscure": {
           "type": "boolean",
           "default": true,
           "description": "Whether to obscure the service."
         },
-        "remoteBeyond.rendezvous": {
+        "remote-beyond.rendezvous": {
           "type": "string",
           "default": "",
           "description": "The rendezvous service."
         },
-        "remoteBeyond.externalConfigPath": {
+        "remote-beyond.externalConfigPath": {
           "type": "string",
           "default": "./remote-beyond-config.json",
           "description": "Path to an external JSON config file (relative to workspace root)."
@@ -69,60 +69,71 @@
     },
     "commands": [
       {
-        "command": "remoteBeyond.startup",
+        "command": "remote-beyond.startup",
         "title": "Init workspace context..."
       },
       {
-        "command": "remoteBeyond.createOffer",
+        "command": "remote-beyond.createOffer",
         "title": "Create an offer..."
       },
       {
-        "command": "remoteBeyond.uploadOffer",
+        "command": "remote-beyond.uploadOffer",
         "title": "Upload an offer..."
       },
       {
-        "command": "remoteBeyond.startService",
+        "command": "remote-beyond.startService",
         "title": "Start service",
         "icon": "$(run)"
       },
       {
-        "command": "remoteBeyond.stopService",
+        "command": "remote-beyond.stopService",
         "title": "Stop service",
         "icon": "$(stop-circle)"
       },
       {
-        "command": "remoteBeyond.addService",
+        "command": "remote-beyond.addService",
         "title": "Add service",
         "icon": "$(new-file)"
       },
       {
-        "command": "remoteBeyond.delService",
+        "command": "remote-beyond.delService",
         "title": "Delete service",
         "icon": "$(notebook-delete-cell)"
       },
       {
-        "command": "remoteBeyond.editService",
+        "command": "remote-beyond.editService",
         "title": "Edit service",
         "icon": "$(settings-edit)"
+      },
+      {
+        "command": "remote-beyond.closeEditor",
+        "title": "Close editor",
+        "icon": "$(close)"
       }
     ],
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "remoteBeyond",
-          "title": "Remote Beyond",
+          "id": "remote-beyond",
+          "title": "Remote - Beyond",
           "icon": "resources/mono.png"
         }
       ]
     },
     "views": {
-      "remoteBeyond": [
+      "remote-beyond": [
         {
           "id": "webpierStartup",
           "name": "Startup",
           "icon": "ports-open-browser-icon",
           "when": "!context.initialized"
         },
+        {
+					"type": "webview",
+					"id": "webpierEditor",
+					"name": "Details",
+          "when": "context.editor"
+				},
         {
           "id": "webpierImport",
           "name": "Import",
@@ -134,49 +145,48 @@
           "name": "Export",
           "icon": "ports-open-browser-icon",
           "when": "context.initialized"
-        },
-        {
-					"type": "webview",
-					"id": "webpierEditor",
-					"name": "Details",
-          "when": "context.editor"
-				}
+        }
       ]
     },
     "menus": {
       "view/title": [
         {
-          "command": "remoteBeyond.createOffer",
+          "command": "remote-beyond.createOffer",
           "when": "view == webpierExport"
         },
         {
-          "command": "remoteBeyond.uploadOffer",
+          "command": "remote-beyond.uploadOffer",
           "when": "view == webpierImport"
         },
         {
-          "command": "remoteBeyond.addService",
+          "command": "remote-beyond.closeEditor",
+          "when": "view == webpierEditor",
+          "group": "navigation"
+        },
+        {
+          "command": "remote-beyond.addService",
           "when": "view == webpierImport || view == webpierExport",
           "group": "navigation"
         }
       ],
       "view/item/context": [
         {
-          "command": "remoteBeyond.startService",
+          "command": "remote-beyond.startService",
           "when": "viewItem === 'webpier.asleep.service'",
           "group": "inline"
         },
         {
-          "command": "remoteBeyond.stopService",
+          "command": "remote-beyond.stopService",
           "when": "viewItem === 'webpier.active.service'",
           "group": "inline"
         },
         {
-          "command": "remoteBeyond.editService",
+          "command": "remote-beyond.editService",
           "when": "viewItem === 'webpier.active.service' || viewItem === 'webpier.asleep.service'",
           "group": "inline"
         },
         {
-          "command": "remoteBeyond.delService",
+          "command": "remote-beyond.delService",
           "when": "viewItem === 'webpier.active.service' || viewItem === 'webpier.asleep.service'",
           "group": "inline"
         }
@@ -185,7 +195,7 @@
     "viewsWelcome": [
 			{
 				"view": "webpierStartup",
-				"contents": "To get started you need to install [WebPier](https://github.com/novemus/webpier/releases/latest) application and define the webpier identity wich consists from the Owner and Pier identifiers. The Owner name should be an email address, if you want to use Email as the rendezvous in addition to DHT network, and the Pier name must be unique for the Owner. Then you can setup preferred rendezvous service and define a STUN server in the extension setting.\n[Init WebPier Context](command:remoteBeyond.startup)"
+				"contents": "To get started you need to install [WebPier](https://github.com/novemus/webpier/releases/latest) application and define the webpier identity wich consists from the Owner and Pier identifiers. The Owner name should be an email address, if you want to use Email as the rendezvous in addition to DHT network, and the Pier name must be unique for the Owner. Then you can setup preferred rendezvous service and define a STUN server in the extension setting.\n[Init WebPier Context](command:remote-beyond.startup)"
 			}
     ]
   },
