@@ -14,8 +14,7 @@
 
     document.getElementById('apply').addEventListener('click', () => {
         const data = {
-            owner: document.getElementById('service').value,
-            owner: document.getElementById('owner').value,
+            name: document.getElementById('service').value,
             pier: document.getElementById('pier').value,
             address: document.getElementById('address').value,
             gateway: document.getElementById('gateway').value,

@@ -12,59 +12,12 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": [
-
-  ],
+  "activationEvents": [],
   "main": "./dist/extension.js",
   "contributes": {
     "configuration": {
-      "title": "Remote Beyond",
+      "title": "Remote - Beyond",
       "properties": {
-        "remote-beyond.owner": {
-          "type": "string",
-          "default": "",
-          "description": "The Owner identifier (e.g., an email address)."
-        },
-        "remote-beyond.pier": {
-          "type": "string",
-          "default": "",
-          "description": "The Pier identifier (must be unique for the Owner)."
-        },
-        "remote-beyond.service": {
-          "type": "string",
-          "default": "ssh",
-          "description": "The service type (e.g., ssh)."
-        },
-        "remote-beyond.address": {
-          "type": "string",
-          "default": "127.0.0.1:22",
-          "description": "The service address."
-        },
-        "remote-beyond.gateway": {
-          "type": "string",
-          "default": "0.0.0.0:0",
-          "description": "The gateway address."
-        },
-        "remote-beyond.autostart": {
-          "type": "boolean",
-          "default": true,
-          "description": "Whether to autostart the service."
-        },
-        "remote-beyond.obscure": {
-          "type": "boolean",
-          "default": true,
-          "description": "Whether to obscure the service."
-        },
-        "remote-beyond.rendezvous": {
-          "type": "string",
-          "default": "",
-          "description": "The rendezvous service."
-        },
-        "remote-beyond.externalConfigPath": {
-          "type": "string",
-          "default": "./remote-beyond-config.json",
-          "description": "Path to an external JSON config file (relative to workspace root)."
-        }
       }
     },
     "commands": [
@@ -83,7 +36,7 @@
       {
         "command": "remote-beyond.startService",
         "title": "Start service",
-        "icon": "$(run)"
+        "icon": "$(play-circle)"
       },
       {
         "command": "remote-beyond.stopService",
@@ -91,7 +44,12 @@
         "icon": "$(stop-circle)"
       },
       {
-        "command": "remote-beyond.addService",
+        "command": "remote-beyond.addImportService",
+        "title": "Add service",
+        "icon": "$(new-file)"
+      },
+      {
+        "command": "remote-beyond.addExportService",
         "title": "Add service",
         "icon": "$(new-file)"
       },
@@ -126,25 +84,26 @@
           "id": "webpierStartup",
           "name": "Startup",
           "icon": "ports-open-browser-icon",
-          "when": "!context.initialized"
+          "when": "!context.uploaded"
         },
         {
-					"type": "webview",
-					"id": "webpierEditor",
-					"name": "Details",
-          "when": "context.editor"
-				},
+          "type": "webview",
+          "id": "webpierEditor",
+          "name": "Details",
+          "icon": "wrench",
+          "when": "context.editable"
+        },
         {
           "id": "webpierImport",
           "name": "Import",
           "icon": "ports-open-browser-icon",
-          "when": "context.initialized"
+          "when": "context.uploaded"
         },
         {
           "id": "webpierExport",
           "name": "Export",
           "icon": "ports-open-browser-icon",
-          "when": "context.initialized"
+          "when": "context.uploaded"
         }
       ]
     },
@@ -164,8 +123,13 @@
           "group": "navigation"
         },
         {
-          "command": "remote-beyond.addService",
-          "when": "view == webpierImport || view == webpierExport",
+          "command": "remote-beyond.addImportService",
+          "when": "view == webpierImport",
+          "group": "navigation"
+        },
+        {
+          "command": "remote-beyond.addExportService",
+          "when": "view == webpierExport",
           "group": "navigation"
         }
       ],
@@ -193,15 +157,16 @@
       ]
     },
     "viewsWelcome": [
-			{
-				"view": "webpierStartup",
-				"contents": "To get started you need to install [WebPier](https://github.com/novemus/webpier/releases/latest) application and define the webpier identity wich consists from the Owner and Pier identifiers. The Owner name should be an email address, if you want to use Email as the rendezvous in addition to DHT network, and the Pier name must be unique for the Owner. Then you can setup preferred rendezvous service and define a STUN server in the extension setting.\n[Init WebPier Context](command:remote-beyond.startup)"
-			}
+      {
+        "view": "webpierStartup",
+        "contents": "To get started you need to install [WebPier](https://github.com/novemus/webpier/releases/latest) application and define the webpier identity wich consists from the Owner and Pier identifiers. The Owner name should be an email address, if you want to use Email as the rendezvous in addition to DHT network, and the Pier name must be unique for the Owner. Then you can setup preferred rendezvous service and define a STUN server in the extension setting.\n[Init WebPier Context](command:remote-beyond.startup)"
+      }
     ]
   },
   "scripts": {
     "vscode:prepublish": "npm run package",
     "compile": "webpack",
+    "electron-rebuild": "./node_modules/.bin/electron-rebuild -v 37.0.0 -f -w fs-ext",
     "watch": "webpack --watch",
     "package": "webpack --mode production --devtool hidden-source-map",
     "compile-tests": "tsc -p . --outDir out",
@@ -211,17 +176,25 @@
     "test": "vscode-test"
   },
   "devDependencies": {
-    "@types/vscode": "^1.105.0",
+    "@electron/rebuild": "^4.0.1",
+    "@types/fs-ext": "^2.0.3",
     "@types/mocha": "^10.0.10",
     "@types/node": "22.x",
+    "@types/node-forge": "^1.3.14",
+    "@types/vscode": "^1.105.0",
     "@typescript-eslint/eslint-plugin": "^8.45.0",
     "@typescript-eslint/parser": "^8.45.0",
-    "eslint": "^9.36.0",
-    "typescript": "^5.9.3",
-    "ts-loader": "^9.5.4",
-    "webpack": "^5.102.0",
-    "webpack-cli": "^6.0.1",
     "@vscode/test-cli": "^0.0.11",
-    "@vscode/test-electron": "^2.5.2"
+    "@vscode/test-electron": "^2.5.2",
+    "eslint": "^9.36.0",
+    "node-forge": "^1.3.1",
+    "node-loader": "^2.1.0",
+    "ts-loader": "^9.5.4",
+    "typescript": "^5.9.3",
+    "webpack": "^5.102.0",
+    "webpack-cli": "^6.0.1"
+  },
+  "dependencies": {
+    "fs-ext": "^2.1.1"
   }
 }

@@ -1,0 +1,355 @@
+import * as vscode from 'vscode';
+import * as utils  from './utils';
+import * as fs from 'fs';
+import * as ext from 'fs-ext';
+import * as forge from 'node-forge';
+
+class SoftLock {
+    private fd: number = -1;
+
+    constructor(file: string) {
+        this.fd = fs.openSync(file, 'w');
+        ext.flockSync(this.fd, 'sh');
+    }
+
+    release() {
+        return ext.flockSync(this.fd, 'un');
+    }
+}
+
+class HardLock {
+    private fd: number = -1;
+
+    constructor(private readonly file: string) {
+        this.fd = fs.openSync(file, 'w');
+        ext.flockSync(this.fd, 'ex');
+    }
+
+    release() {
+        fs.utimesSync(this.file, new Date(), new Date());
+        return ext.flockSync(this.fd, 'un');
+    }
+}
+
+export enum Logging {
+    None,
+    Fatal,
+    Error,
+    Warning,
+    Info,
+    Debug,
+    Trace
+};
+
+export class Journal {
+    public folder: string = '';
+    public level: Logging = Logging.Debug;
+    
+    static parse(object: any) : Journal {
+        const result = new Journal();
+        result.folder = object.folder;
+        result.level = parseInt(object.level) as Logging;
+        return result;
+    }
+}
+
+export class Nat {
+    public stun: string = 'stun.ekiga.net';
+    public hops: number = 7;
+    
+    static parse(object: any) : Nat {
+        const result = new Nat();
+        result.stun = object.stun;
+        result.hops = parseInt(object.hops);
+        return result;
+    }
+}
+
+export class Dht {
+    public bootstrap: string = 'bootstrap.jami.net';
+    public port: number = 0;
+    public network: number = 0;
+    
+    static parse(object: any) : Dht {
+        const result = new Dht();
+        result.bootstrap = object.bootstrap;
+        result.port = parseInt(object.port);
+        result.network = parseInt(object.network);
+        return result;
+    }
+}
+
+export class Email {
+    public smtp: string = '';
+    public imap: string = '';
+    public login: string = '';
+    public password: string = '';
+    public cert: string = '';
+    public key: string = '';
+    public ca: string = '';
+    
+    static parse(object: any) : Email {
+        const result = new Email();
+        result.smtp = object.smtp;
+        result.imap = object.imap;
+        result.login = object.login;
+        result.password = object.password;
+        result.cert = object.cert;
+        result.key = object.key;
+        result.ca = object.ca;
+        return result;
+    }
+}
+
+export class Config {
+    public pier: string = '';
+    public repo: string = '';
+    public log: Journal = new Journal();
+    public nat: Nat = new Nat();
+    public dht: Dht = new Dht();
+    public email: Email = new Email();
+
+    static parse(object: any) : Config {
+        const result = new Config();
+        result.pier = object.pier;
+        result.repo = object.repo;
+        result.log = Journal.parse(object.log);
+        result.nat = Nat.parse(object.nat);
+        result.dht = Dht.parse(object.dht);
+        result.email = Email.parse(object.email);
+        return result;
+    }
+}
+
+export class Service {
+    public local: boolean = false;
+    public name: string = '';
+    public pier: string = '';
+    public address: string = '';
+    public gateway: string = '0.0.0.0:0';
+    public rendezvous: string = 'bootstrap.jami.net';
+    public autostart: boolean = false;
+    public obscure: boolean = true;
+
+    static parse(object: any) : Service {
+        const result = new Service();
+        result.local = object.local.toString().toLowerCase() === 'true';
+        result.name = object.name;
+        result.pier = object.pier;
+        result.address = object.address;
+        result.gateway = object.gateway;
+        result.rendezvous = object.rendezvous;
+        result.autostart = object.autostart.toString().toLowerCase() === 'true';
+        result.obscure = object.obscure.toString().toLowerCase() === 'true';
+        return result;
+    }
+
+    static parseArray(array: any[]) : Service[] {
+        const result: Service[] = [];
+        for(const object of array) {
+            result.push(Service.parse(object));
+        }
+        return result;
+    }
+};
+
+export class Context {
+    private config: Config = new Config();
+    private services: Map<string, Service[]> = new Map<string, Service[]>();
+
+    constructor(private home: string) {
+    }
+
+    public async init(pier: string) {
+        const { publicKey, privateKey } = forge.pki.rsa.generateKeyPair(2048);
+
+        const cert = forge.pki.createCertificate();
+
+        cert.publicKey = publicKey;
+        cert.serialNumber = new Date().getTime().toString(16);
+        cert.validity.notBefore = new Date();
+        cert.validity.notAfter = new Date();
+        cert.validity.notAfter.setFullYear(cert.validity.notBefore.getFullYear() + 5);
+
+        const attrs = [{
+            name: 'commonName',
+            value: pier
+        }];
+
+        cert.setSubject(attrs);
+        cert.setIssuer(attrs);
+        cert.sign(privateKey);
+
+        this.config.pier = pier;
+        this.config.repo = this.home + '/' + Array.prototype.map.call(new TextEncoder().encode(pier), x => ('00' + x.toString(16)).slice(-2)).join('');
+
+        this.services = new Map<string, Service[]>();
+        this.services.set(pier, []);
+
+        fs.mkdirSync(this.home, { recursive: true });
+
+        const lock = new HardLock(this.home + '/webpier.lock');
+        try {
+            await utils.writeJsonFile(this.home + '/webpier.json', this.config);
+            fs.mkdirSync(this.config.repo + '/' + pier, { recursive: true });
+            fs.writeFileSync(this.config.repo + '/' + pier + '/cert.crt', forge.pki.certificateToPem(cert));
+            fs.writeFileSync(this.config.repo + '/' + pier + '/private.key', forge.pki.privateKeyToPem(privateKey));
+            lock.release();
+        } catch (error) {
+            lock.release();
+            throw error;
+        }
+    }
+
+    public async load() {
+        const lock = new SoftLock(this.home + '/webpier.lock');
+        try {
+            this.config = Config.parse(await utils.readJsonFile(this.home + '/webpier.json'));
+            this.services.set(this.config.pier, []);
+            for(const email of fs.readdirSync(this.config.repo, { withFileTypes: true })) {
+                if (email.isDirectory()) {
+                    for(const host of fs.readdirSync(email.parentPath + '/' + email.name, { withFileTypes: true })) {
+                        const pier = email.name + '/' + host.name;
+                        const conf = this.config.repo + '/' + pier + '/webpier.json';
+                        if (host.isDirectory() && fs.existsSync(conf)) {
+                            const config = await utils.readJsonFile(conf);
+                            this.services.set(pier, Service.parseArray(config.services));
+                        }
+                    }
+                }
+            }
+            lock.release();
+        } catch (error) {
+            lock.release();
+            throw error;
+        }
+    }
+
+    public getPier() : string {
+        return this.config.pier;
+    }
+
+    public getConfig() : Config {
+        return JSON.parse(JSON.stringify(this.config));
+    }
+
+    public getServices() : Map<string, Service[]> {
+        const result = new Map<string, Service[]>();
+        this.services.forEach((services, pier) => {
+            result.set(pier, JSON.parse(JSON.stringify(services)));
+        });
+        return result;
+    }
+
+    public async setConfig(config: Config) {
+        if (config.pier !== this.config.pier) {
+            throw new Error('Wrong pier');
+        }
+        if (config.repo !== this.config.repo) {
+            throw new Error('Wrong repo');
+        }
+        this.config = JSON.parse(JSON.stringify(config));
+        const lock = new HardLock(this.home + '/webpier.lock');
+        try {
+            await utils.writeJsonFile(this.home + '/webpier.json', this.config);
+            lock.release();
+        } catch (error) {
+            lock.release();
+            throw error;
+        }
+    }
+
+    public getService(pier: string, name: string) : Service {
+        const pool = this.services.get(pier);
+        if (pool) {
+            const service = pool.find((item) => item.name === name);
+            if (service) {
+                return JSON.parse(JSON.stringify(service));
+            }
+            throw new Error('Unknown service');
+        }
+        throw new Error('Unknown pier');
+    }
+
+    public async setService(pier: string, info: Service) {
+        let services = this.services.get(pier);
+        if (services) {
+            let found = services.find((service) => service.name === info.name);
+            if (found) {
+                found = JSON.parse(JSON.stringify(info));
+            } else {
+                services.push(JSON.parse(JSON.stringify(info)));
+            }
+            const lock = new HardLock(this.home + '/webpier.lock');
+            try {
+                await utils.writeJsonFile(this.config.repo + '/' + pier + '/webpier.json', { services });
+                lock.release();
+            } catch (error) {
+                lock.release();
+                throw error;
+            }
+        } else {
+            throw new Error('Unknown pier');
+        }
+    }
+
+    public async delService(pier: string, name: string) {
+        let services = this.services.get(pier);
+        if (services) {
+            services = services.filter((service) => service.name !== name);
+            this.services.set(pier, services);
+            const lock = new HardLock(this.home + '/webpier.lock');
+            try {
+                await utils.writeJsonFile(this.config.repo + '/' + pier + '/webpier.json', { services });
+                lock.release();
+            } catch (error) {
+                lock.release();
+                throw error;
+            }
+        }
+    }
+
+    public getRemotes() : string[] {
+        const piers: string[] = [];
+        this.services.forEach((_, pier) => {
+            if (pier !== this.config.pier) {
+                piers.push(pier);
+            }
+        });
+        return piers;
+    }
+
+    public setRemote(pier: string, cert: string) {
+        const dir = this.config.repo + '/' + pier;
+        if (pier !== this.config.pier && !fs.existsSync(dir)) {
+            const lock = new HardLock(this.home + '/webpier.lock');
+            try {
+                fs.mkdirSync(dir, { recursive: true });
+                fs.writeFileSync(dir + '/cert.crt', cert);
+                lock.release();
+            } catch (error) {
+                lock.release();
+                throw error;
+            }
+        } else {
+            throw new Error('Wrong pier');
+        }
+    }
+
+    public delRemote(pier: string) {
+        if (pier === this.config.pier) {
+            throw new Error('Wrong pier');
+        }
+        const dir = this.config.repo + '/' + pier;
+        if (fs.existsSync(dir)) {
+            const lock = new HardLock(this.home + '/webpier.lock');
+            try {
+                fs.rmSync(dir, { recursive: true, force: true });
+                lock.release();
+            } catch (error) {
+                lock.release();
+                throw error;
+            }
+        }
+    }
+};

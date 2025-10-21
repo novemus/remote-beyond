@@ -1,4 +1,6 @@
 import * as vscode from 'vscode';
+import * as webpier from './webpierContext';
+import * as utils  from './utils';
 
 export enum ServiceStatus {
     Asleep,
@@ -13,45 +15,13 @@ export abstract class WebpierDataItem extends vscode.TreeItem {
 }
 
 export class WebpierDataProvider implements vscode.TreeDataProvider<WebpierDataItem> {
+    
     private services: Map<string, WebpierService> = new Map<string, WebpierService>();
+
     private _onDidChangeTreeData: vscode.EventEmitter<WebpierDataItem | undefined | null | void> = new vscode.EventEmitter<WebpierDataItem | undefined | null | void>(); 
     readonly onDidChangeTreeData: vscode.Event<WebpierDataItem | undefined | null | void> = this._onDidChangeTreeData.event;
-    constructor(context: vscode.ExtensionContext, remote: boolean) {
 
-        if (remote) {
-            const nodes1: Map<string, WebpierNode> = new Map<string, WebpierNode>();
-            const nodes2: Map<string, WebpierNode> = new Map<string, WebpierNode>();
-
-            const serv1 = new WebpierService('ssh', '127.0.0.1:2222', nodes1, this);
-            const serv2 = new WebpierService('rdp', '127.0.0.1:33389', nodes2, this);
-
-            this.services.set('ssh', serv1);
-            this.services.set('rdp', serv2);
-
-            nodes1.set('s1001', new WebpierNode('sergey-nine@yandex.ru', 's1001', serv1));
-            nodes2.set('antique', new WebpierNode('sergey-nine@yandex.ru', 'antique', serv2));
-
-            serv1.setStatus(ServiceStatus.Broken, []);
-            serv2.setStatus(ServiceStatus.Burden, ['antique']);
-        } else {
-            const nodes1: Map<string, WebpierNode> = new Map<string, WebpierNode>();
-            const nodes2: Map<string, WebpierNode> = new Map<string, WebpierNode>();
-
-            const serv1 = new WebpierService('ssh', '127.0.0.1:22', nodes1, this);
-            const serv2 = new WebpierService('rdp', '127.0.0.1:3389', nodes2, this);
-
-            this.services.set('ssh', serv1);
-            this.services.set('rdp', serv2);
-
-            nodes1.set('s1001', new WebpierNode('sergey-nine@yandex.ru', 's1001', serv1));
-            nodes1.set('antique', new WebpierNode('sergey-nine@yandex.ru', 'antique', serv1));
-
-            nodes2.set('s1001', new WebpierNode('sergey-nine@yandex.ru', 's1001', serv2));
-            nodes2.set('antique', new WebpierNode('sergey-nine@yandex.ru', 'antique', serv2));
-
-            serv1.setStatus(ServiceStatus.Broken, []);
-            serv2.setStatus(ServiceStatus.Burden, ['s1001']);
-        }
+    constructor(private vsc: vscode.ExtensionContext, private wpc: webpier.Context, public readonly remote: boolean) {
     }
 
     getTreeItem(element: WebpierDataItem): vscode.TreeItem {
@@ -69,13 +39,34 @@ export class WebpierDataProvider implements vscode.TreeDataProvider<WebpierDataI
     refresh(item?: WebpierDataItem): void {
         this._onDidChangeTreeData.fire(item);
     }
+
+    rebuild() : void {
+        const local = this.wpc.getPier();
+        for(const [pier, services] of this.wpc.getServices()) {
+            if (this.remote && pier !== local || !this.remote && pier === local) {
+                for(const service of services) {
+                    this.services.set(pier + '/' + service.name, new WebpierService(service.name, service.pier, service.address, this));
+                };
+            }
+        };
+    }
+
+    remove(name: string, pier: string) : void {
+        const key = this.remote ? pier : this.wpc.getPier() + '/' + name;
+        this.services.delete(key);
+    }
+
+    insert(name: string, pier: string, address: string) : void {
+        const key = this.remote ? pier : this.wpc.getPier() + '/' + name;
+        this.services.set(key, new WebpierService(name, pier, address, this));
+    }
 }
 
 export class WebpierNode extends WebpierDataItem {
     constructor(public readonly owner: string, public readonly pier: string, private service: WebpierService) {
-        super(pier, vscode.TreeItemCollapsibleState.None);
+        super(owner, vscode.TreeItemCollapsibleState.None);
         this.contextValue = 'webpier.export.node';
-        this.description = this.owner;
+        this.description = this.pier;
         this.tooltip = this.owner + '/' + this.pier;
         this.iconPath = new vscode.ThemeIcon('plug', new vscode.ThemeColor('debugIcon.breakpointDisabledForeground'));
     }
@@ -94,10 +85,16 @@ export class WebpierNode extends WebpierDataItem {
 }
 
 export class WebpierService extends WebpierDataItem {
-    constructor(public readonly name: string, public readonly address: string, private nodes: Map<string, WebpierNode>, private root: WebpierDataProvider) {
-        super(address, vscode.TreeItemCollapsibleState.Collapsed);
-        this.description = this.name;
+    private nodes: Map<string, WebpierNode> = new Map<string, WebpierNode>();
+    constructor(public readonly name: string, public readonly pier: string, public readonly address: string, public readonly root: WebpierDataProvider) {
+        super(name, vscode.TreeItemCollapsibleState.Collapsed);
+        this.description = this.address;
         this.contextValue = 'webpier.asleep.service';
+        this.iconPath = new vscode.ThemeIcon('broadcast', new vscode.ThemeColor('debugIcon.breakpointDisabledForeground'));
+        this.tooltip = 'asleep';
+        for(const pier of this.pier.split(' ')) {
+            this.nodes.set(pier, new WebpierNode(utils.prefix(pier, '/'), utils.postfix(pier, '/'), this));
+        };
     }
 
     setStatus(status: ServiceStatus, tunnels: string[]) {
@@ -131,5 +128,10 @@ export class WebpierService extends WebpierDataItem {
 
     refresh(item?: WebpierDataItem) : void {
         this.root.refresh(item ? item : this);
+    }
+
+    remove() : WebpierDataProvider {
+        this.root.remove(this.name, this.pier);
+        return this.root;
     }
 }

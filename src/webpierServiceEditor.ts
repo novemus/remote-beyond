@@ -1,10 +1,14 @@
 import * as vscode from 'vscode';
+import * as webpier from './webpierContext';
+import { WebpierDataProvider } from './webpierDataProvider';
 
 export class WebpierServiceEditor implements vscode.WebviewViewProvider {
     public static readonly viewType = 'webpierEditor';
     private view?: vscode.WebviewView;
+    private tree?: WebpierDataProvider;
+    private service?: webpier.Service;
 
-    constructor(private readonly extensionUri: vscode.Uri, private readonly config: any) {}
+    constructor(private readonly extensionUri: vscode.Uri, private readonly wpc: webpier.Context) {}
 
     public resolveWebviewView(webviewView: vscode.WebviewView, context: vscode.WebviewViewResolveContext, token: vscode.CancellationToken) {
         this.view = webviewView;
@@ -14,32 +18,39 @@ export class WebpierServiceEditor implements vscode.WebviewViewProvider {
             localResourceRoots: [vscode.Uri.joinPath(this.extensionUri, 'media')]
         };
 
-        webviewView.webview.html = this.getHtmlForWebview(webviewView.webview, this.config);
+        webviewView.webview.html = this.getHtmlForWebview(webviewView.webview);
 
         webviewView.webview.onDidReceiveMessage(data => {
             switch (data.type) {
                 case 'apply': {
-                        vscode.window.showInformationMessage('Form submitted with data: ' + JSON.stringify(data.dervice, null, 2));
-                        this.handleFormSubmit(data.dervice);
-                        break;
-                    }
+                    this.handleFormSubmit(data.service);
+                    break;
+                }
             }
         });
     }
 
-    private handleFormSubmit(dervice: any) {
-        console.log('Service:', dervice.service);
-        console.log('Owner:', dervice.owner);
-        console.log('Pier:', dervice.pier);
-        console.log('Address:', dervice.address);
-        console.log('Gateway:', dervice.gateway);
-        console.log('Autostart:', dervice.autostart);
-        console.log('Obscure:', dervice.obscure);
-        console.log('Rendezvous:', dervice.rendezvous);
+    public populate(service: webpier.Service, tree: WebpierDataProvider) {
+        this.service = service;
+        this.tree = tree;
     }
 
-    private getHtmlForWebview(webview: vscode.Webview, config: any) {
-        
+    private handleFormSubmit(service: webpier.Service) {
+        if (this.tree && this.service) {
+            const pier = this.wpc.getPier();
+            if (this.service.name !== '') {
+                this.wpc.delService(this.tree.remote ? this.service.pier : pier, this.service.name);
+                this.tree.remove(this.service.name, this.service.pier);
+            }
+            service.local = this.tree.remote === false;
+            this.wpc.setService(this.tree.remote ? service.pier : pier, service);
+            this.tree.insert(service.name, service.pier, service.address);
+            this.tree.refresh();
+            vscode.commands.executeCommand('setContext', 'context.editable', false);
+        }
+    }
+
+    private getHtmlForWebview(webview: vscode.Webview) {
         const scriptPath = vscode.Uri.joinPath(this.extensionUri, 'media', 'service.js');
 		const scriptUri = webview.asWebviewUri(scriptPath);
         const stylesPath = vscode.Uri.joinPath(this.extensionUri, 'media', 'styles.css');
@@ -68,44 +79,40 @@ export class WebpierServiceEditor implements vscode.WebviewViewProvider {
                         <table>
                             <tr>
                                 <td><label for="service">Service:</label></td>
-                                <td><input type="text" id="service" name="service" placeholder="Service name" value="${config.service || ''}"></td>
-                            </tr>
-                            <tr>
-                                <td><label for="owner">Owner:</label></td>
-                                <td><input type="text" id="owner" name="owner" placeholder="Owner ID" value="${config.owner || ''}"></td>
+                                <td><input type="text" id="service" name="service" placeholder="Service name" value="${this.service?.name || ''}"></td>
                             </tr>
                             <tr>
                                 <td><label for="pier">Pier:</label></td>
-                                <td><input type="text" id="pier" name="pier" placeholder="Pier ID" value="${config.pier || ''}"></td>
+                                <td><input type="text" id="pier" name="pier" placeholder="Pier ID" value="${this.service?.pier || ''}"></td>
                             </tr>
                             <tr>
                                 <td><label for="address">Address:</label></td>
-                                <td><input type="text" id="address" name="address" placeholder="Service ip:port" value="${config.address || ''}"></td>
+                                <td><input type="text" id="address" name="address" placeholder="Service ip:port" value="${this.service?.address || ''}"></td>
                             </tr>
                             <tr>
                                 <td><label for="gateway">Gateway:</label></td>
-                                <td><input type="text" id="gateway" name="gateway" placeholder="Tunnel ip:port" value="${config.gateway || ''}"></td>
+                                <td><input type="text" id="gateway" name="gateway" placeholder="Tunnel ip:port" value="${this.service?.gateway || ''}"></td>
                             </tr>
                             <tr>
                                 <td><label for="rendezvous">Rendezvous:</label></td>
                                 <td>
                                     <select id="rendezvous" name="rendezvous">
-                                        <option value="email" ${config.rendezvous === '' ? 'selected' : ''}>Email</option>
-                                        <option value="dht" ${config.rendezvous !== '' ? 'selected' : ''}>DHT</option>
+                                        <option value="email" ${this.service?.rendezvous === '' ? 'selected' : ''}>Email</option>
+                                        <option value="dht" ${this.service?.rendezvous !== '' ? 'selected' : ''}>DHT</option>
                                     </select>
                                 </td>
                             </tr>
-                            <tr id="bootstrapRow" class="${config.rendezvous !== '' ? '' : 'hidden'}">
+                            <tr id="bootstrapRow" class="${this.service?.rendezvous !== '' ? '' : 'hidden'}">
                                 <td><label for="bootstrap">Bootstrap:</label></td>
-                                <td><input type="text" id="bootstrap" name="bootstrap" placeholder="DHT bootstrap hosts" value="${config.rendezvous || ''}"></td>
+                                <td><input type="text" id="bootstrap" name="bootstrap" placeholder="DHT bootstrap hosts" value="${this.service?.rendezvous || ''}"></td>
                             </tr>
                             <tr>
                                 <td><label for="autostart">Autostart:</label></td>
-                                <td><input type="checkbox" id="autostart" name="autostart" ${config.autostart ? 'checked' : ''}></td>
+                                <td><input type="checkbox" id="autostart" name="autostart" ${this.service?.autostart ? 'checked' : ''}></td>
                             </tr>
                             <tr>
                                 <td><label for="obscure">Obscure:</label></td>
-                                <td><input type="checkbox" id="obscure" name="obscure" ${config.obscure ? 'checked' : ''}></td>
+                                <td><input type="checkbox" id="obscure" name="obscure" ${this.service?.obscure ? 'checked' : ''}></td>
                             </tr>
                         </table>
                         <button id="apply">Apply</button>
