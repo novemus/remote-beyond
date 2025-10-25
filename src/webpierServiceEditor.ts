@@ -3,7 +3,6 @@ import * as webpier from './webpierContext';
 import { WebpierDataProvider } from './webpierDataProvider';
 
 export class WebpierServiceEditor implements vscode.WebviewViewProvider {
-    public static readonly viewType = 'webpierEditor';
     private view?: vscode.WebviewView;
     private tree?: WebpierDataProvider;
     private service?: webpier.Service;
@@ -15,7 +14,9 @@ export class WebpierServiceEditor implements vscode.WebviewViewProvider {
 
         webviewView.webview.options = {
             enableScripts: true,
-            localResourceRoots: [vscode.Uri.joinPath(this.extensionUri, 'media')]
+            localResourceRoots: [
+                vscode.Uri.joinPath(this.extensionUri, 'media')
+            ]
         };
 
         webviewView.webview.html = this.getHtmlForWebview(webviewView.webview);
@@ -46,15 +47,47 @@ export class WebpierServiceEditor implements vscode.WebviewViewProvider {
             this.wpc.setService(this.tree.remote ? service.pier : pier, service);
             this.tree.insert(service.name, service.pier, service.address);
             this.tree.refresh();
-            vscode.commands.executeCommand('setContext', 'context.editable', false);
+            vscode.commands.executeCommand('setContext', 'context.edit', null);
         }
     }
 
+    private makePierSelector() {
+        let selector = '';
+        if (this.tree?.remote) {
+            selector = `<select id="single-pier" name="pier">`;
+            for(const pier of this.wpc.getRemotes()) {
+                selector += `<option value="${pier}" ${this.service?.pier === pier ? 'selected' : ''}>${pier}</option>`;
+            }
+            selector += `</select>`;
+        } else {
+            selector = `<div class="dropdown" name="pier">
+                            <button id="multi-pier" class="multi-selector" value="${this.service?.pier}">
+                                ${this.service?.pier.length === 0 ? '&nbsp;' : this.service?.pier }
+                            </button>
+                            <div id="dropdown-content" class="dropdown-content">`;
+            const selected = this.service?.pier.split(' ');
+            for(const pier of this.wpc.getRemotes()) {
+                selector += `<label>
+                                <input type="checkbox" value="${pier}" ${selected?.find((item) => item === pier) ? 'checked' : ''}>
+                                <span class="dropdown-label">${pier}</span>
+                            </label>`;
+            }
+            selector += `</div></div>`;
+        }
+        return selector;
+    }
+
+    private makeRendezvousSelector() {
+        return `<select id="rendezvous" name="rendezvous">
+                    <option value="email" ${this.service?.rendezvous === '' ? 'selected' : ''}>Email</option>
+                    <option value="dht" ${this.service?.rendezvous !== '' ? 'selected' : ''}>DHT</option>
+                </select>`;
+    }
+
     private getHtmlForWebview(webview: vscode.Webview) {
-        const scriptPath = vscode.Uri.joinPath(this.extensionUri, 'media', 'service.js');
-		const scriptUri = webview.asWebviewUri(scriptPath);
-        const stylesPath = vscode.Uri.joinPath(this.extensionUri, 'media', 'styles.css');
-        const stylesUri = webview.asWebviewUri(stylesPath);
+
+		const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(this.extensionUri, 'media', 'service.js'));
+        const stylesUri = webview.asWebviewUri(vscode.Uri.joinPath(this.extensionUri, 'media', 'styles.css'));
 
         const nonce = getNonce();
 
@@ -67,7 +100,6 @@ export class WebpierServiceEditor implements vscode.WebviewViewProvider {
                         and only allow scripts that have a specific nonce.
                     -->
                     <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource}; img-src ${webview.cspSource} https:; script-src 'nonce-${nonce}';">
-
                     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
                     <link href="${stylesUri}" rel="stylesheet">
@@ -83,7 +115,7 @@ export class WebpierServiceEditor implements vscode.WebviewViewProvider {
                             </tr>
                             <tr>
                                 <td><label for="pier">Pier:</label></td>
-                                <td><input type="text" id="pier" name="pier" placeholder="Pier ID" value="${this.service?.pier || ''}"></td>
+                                <td>${this.makePierSelector()}</td>
                             </tr>
                             <tr>
                                 <td><label for="address">Address:</label></td>
@@ -95,12 +127,7 @@ export class WebpierServiceEditor implements vscode.WebviewViewProvider {
                             </tr>
                             <tr>
                                 <td><label for="rendezvous">Rendezvous:</label></td>
-                                <td>
-                                    <select id="rendezvous" name="rendezvous">
-                                        <option value="email" ${this.service?.rendezvous === '' ? 'selected' : ''}>Email</option>
-                                        <option value="dht" ${this.service?.rendezvous !== '' ? 'selected' : ''}>DHT</option>
-                                    </select>
-                                </td>
+                                <td>${this.makeRendezvousSelector()}</td>
                             </tr>
                             <tr id="bootstrapRow" class="${this.service?.rendezvous !== '' ? '' : 'hidden'}">
                                 <td><label for="bootstrap">Bootstrap:</label></td>
@@ -115,7 +142,7 @@ export class WebpierServiceEditor implements vscode.WebviewViewProvider {
                                 <td><input type="checkbox" id="obscure" name="obscure" ${this.service?.obscure ? 'checked' : ''}></td>
                             </tr>
                         </table>
-                        <button id="apply">Apply</button>
+                        <button class="apply-button" id="apply">Apply</button>
                     </div>
 
                     <script nonce="${nonce}" src="${scriptUri}"></script>

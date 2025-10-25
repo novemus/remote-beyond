@@ -30,7 +30,10 @@ export async function activate(vsc: vscode.ExtensionContext) {
 
 	const editor = new WebpierServiceEditor(vsc.extensionUri, wpc);
 	vsc.subscriptions.push(
-		vscode.window.registerWebviewViewProvider(WebpierServiceEditor.viewType, editor)
+		vscode.window.registerWebviewViewProvider('webpierImportEditor', editor)
+	);
+	vsc.subscriptions.push(
+		vscode.window.registerWebviewViewProvider('webpierExportEditor', editor)
 	);
 
 	vsc.subscriptions.push(vscode.commands.registerCommand('remote-beyond.startService', (item: WebpierService) => {
@@ -43,9 +46,9 @@ export async function activate(vsc: vscode.ExtensionContext) {
 		item.refresh();
 	}));
 
-	vsc.subscriptions.push(vscode.commands.registerCommand('remote-beyond.editService', (item: WebpierService) => {
+	vsc.subscriptions.push(vscode.commands.registerCommand('remote-beyond.openServiceEditor', (item: WebpierService) => {
 		editor.populate(wpc.getService(item.root.remote ? item.pier : wpc.getPier(), item.name), item.root);
-		vscode.commands.executeCommand('setContext', 'context.editable', true);
+		vscode.commands.executeCommand('setContext', 'context.edit', item.root.remote ? 'import' : 'export');
 	}));
 
 	vsc.subscriptions.push(vscode.commands.registerCommand('remote-beyond.delService', (item: WebpierService) => {
@@ -55,16 +58,16 @@ export async function activate(vsc: vscode.ExtensionContext) {
 
 	vsc.subscriptions.push(vscode.commands.registerCommand('remote-beyond.addImportService', () => {
 		editor.populate(new webpier.Service(), imports);
-		vscode.commands.executeCommand('setContext', 'context.editable', true);
+		vscode.commands.executeCommand('setContext', 'context.edit', 'import');
 	}));
 
 	vsc.subscriptions.push(vscode.commands.registerCommand('remote-beyond.addExportService', () => {
 		editor.populate(new webpier.Service(), exports);
-		vscode.commands.executeCommand('setContext', 'context.editable', true);
+		vscode.commands.executeCommand('setContext', 'context.edit', 'export');
 	}));
 
-	vsc.subscriptions.push(vscode.commands.registerCommand('remote-beyond.closeEditor', () => {
-		vscode.commands.executeCommand('setContext', 'context.editable', false);
+	vsc.subscriptions.push(vscode.commands.registerCommand('remote-beyond.closeServiceEditor', () => {
+		vscode.commands.executeCommand('setContext', 'context.edit', null);
 	}));
 
 	vsc.subscriptions.push(vscode.commands.registerCommand('remote-beyond.startup', async () => {
@@ -104,9 +107,9 @@ export async function activate(vsc: vscode.ExtensionContext) {
 	}));
 
 	vsc.subscriptions.push(vscode.commands.registerCommand('remote-beyond.createOffer', async () => {
-		const select = await vscode.window.showQuickPick([{ label: '127.0.0.1:22', description: 'ssh', detail: 'Rendezvous: Email' }, { label: '127.0.0.1:3389', description: 'rdp', detail: 'Rendezvous: DHT'}], {
+		const select = await vscode.window.showQuickPick([{ label: 'ssh', description: '127.0.0.1:22', detail: 'Rendezvous: Email' }, { label: 'rdp', description: '127.0.0.1:3389', detail: 'Rendezvous: DHT'}], {
 			title: 'sergey-nine@yandex.ru/antique',
-			placeHolder: 'Select local services to export',
+			placeHolder: 'Select services to export',
 			canPickMany: true
 		});
 

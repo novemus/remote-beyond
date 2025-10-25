@@ -15,11 +15,20 @@
   "activationEvents": [],
   "main": "./dist/extension.js",
   "contributes": {
-    "configuration": {
-      "title": "Remote - Beyond",
-      "properties": {
+    "configuration": [
+      {
+        "title": "Remote - Beyond",
+        "properties": {
+          "remote-beyond.webpier.home": {
+            "order": 1,
+            "type": "string",
+            "default": "",
+            "description": "Path to the WebPier context directory.",
+            "scope": "machine"
+          }
+        }
       }
-    },
+    ],
     "commands": [
       {
         "command": "remote-beyond.startup",
@@ -59,12 +68,12 @@
         "icon": "$(notebook-delete-cell)"
       },
       {
-        "command": "remote-beyond.editService",
+        "command": "remote-beyond.openServiceEditor",
         "title": "Edit service",
         "icon": "$(settings-edit)"
       },
       {
-        "command": "remote-beyond.closeEditor",
+        "command": "remote-beyond.closeServiceEditor",
         "title": "Close editor",
         "icon": "$(close)"
       }
@@ -88,10 +97,17 @@
         },
         {
           "type": "webview",
-          "id": "webpierEditor",
-          "name": "Details",
+          "id": "webpierImportEditor",
+          "name": "Editor: import",
           "icon": "wrench",
-          "when": "context.editable"
+          "when": "context.edit == 'import'"
+        },
+        {
+          "type": "webview",
+          "id": "webpierExportEditor",
+          "name": "Editor: export",
+          "icon": "wrench",
+          "when": "context.edit == 'export'"
         },
         {
           "id": "webpierImport",
@@ -118,8 +134,8 @@
           "when": "view == webpierImport"
         },
         {
-          "command": "remote-beyond.closeEditor",
-          "when": "view == webpierEditor",
+          "command": "remote-beyond.closeServiceEditor",
+          "when": "view == webpierImportEditor || view == webpierExportEditor",
           "group": "navigation"
         },
         {
@@ -145,7 +161,7 @@
           "group": "inline"
         },
         {
-          "command": "remote-beyond.editService",
+          "command": "remote-beyond.openServiceEditor",
           "when": "viewItem === 'webpier.active.service' || viewItem === 'webpier.asleep.service'",
           "group": "inline"
         },

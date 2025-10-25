@@ -12,6 +12,7 @@ body {
 table {
     width: 100%;
     border-collapse: collapse;
+    table-layout: fixed;
 }
 td {
     padding: 6px 8px;
@@ -55,7 +56,7 @@ input[type="checkbox"]:disabled {
 }
 select {
     width: 100%;
-    padding: 6px 8px;
+    padding: 5px;
     background-color: var(--vscode-dropdown-background);
     color: var(--vscode-dropdown-foreground);
     border: 1px solid var(--vscode-dropdown-border);
@@ -72,8 +73,7 @@ select:focus {
 select:disabled {
     color: var(--vscode-disabledForeground);
 }
-button {
-    margin-top: 8px;
+.apply-button {
     padding: 8px 14px;
     background-color: var(--vscode-button-background);
     color: var(--vscode-button-foreground);
@@ -84,13 +84,61 @@ button {
     font-family: var(--vscode-font-family);
     font-weight: 500;
 }
-button:hover {
+.apply-button:hover {
     background-color: var(--vscode-button-hoverBackground);
 }
-button:active {
+.apply-button:active {
     background-color: var(--vscode-button-hoverBackground);
     opacity: 0.9;
 }
 .hidden {
     display: none;
+}
+.dropdown {
+    position: relative;
+    display: inline-block;
+    width: 100%;
+}
+.dropdown-content {
+    display: none;
+    position: absolute;
+    background-color: var(--vscode-input-background);
+    width: 100%;
+    overflow-y: auto;
+    border: 1px solid var(--vscode-focusBorder);
+    z-index: 1;
+}
+.dropdown-content label {
+    display: block;
+    cursor: pointer;
+    padding-left: 5px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+.dropdown-content label:hover {
+    background-color: var(--vscode-button-hoverBackground);
+}
+.dropdown-label {
+    padding-left: 5px;
+}
+.show {
+    display: block;
+}
+.multi-selector {
+    width: 100%;
+    padding: 6px 8px;
+    margin: 0;
+    text-align: left;
+    border: 1px solid var(--vscode-input-border);
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    color: var(--vscode-input-foreground);
+    background-color: var(--vscode-input-background);
+    display: block;
+}
+.multi-selector:focus {
+    outline: 1px solid var(--vscode-focusBorder);
+    border-color: var(--vscode-focusBorder);
 }

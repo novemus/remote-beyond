@@ -13,9 +13,10 @@
     });
 
     document.getElementById('apply').addEventListener('click', () => {
+        const pier = document.getElementById('single-pier') || document.getElementById('multi-pier');
         const data = {
             name: document.getElementById('service').value,
-            pier: document.getElementById('pier').value,
+            pier: pier.value,
             address: document.getElementById('address').value,
             gateway: document.getElementById('gateway').value,
             autostart: document.getElementById('autostart').checked,
@@ -41,4 +42,41 @@
             }
         });
     });
+
+    const checkboxes = document.querySelectorAll('.dropdown-content input[type="checkbox"]');
+    if (checkboxes) {
+        document.getElementById('multi-pier').addEventListener('click', () => {
+            document.getElementById("dropdown-content").classList.toggle("show");
+        });
+
+        window.onclick = (event) => {
+            if (!event.target.matches('.dropdown-content input') && !event.target.matches('.dropdown-content label')
+                    && !event.target.matches('.dropdown button') && !event.target.matches('.dropdown div') && !event.target.matches('.dropdown span')) {
+                const list = document.getElementById("dropdown-content");
+                if (list.classList.contains('show')) {
+                    list.classList.remove('show');
+                }
+            }
+        };
+
+        checkboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', () => {
+                const button = document.getElementById('multi-pier');
+                let selection = '';
+                checkboxes.forEach(checkbox => {
+                    if (checkbox.checked) {
+                        if (selection !== '') {
+                            selection += ' ';
+                        }
+                        selection += checkbox.value;
+                    }
+                });
+                button.value = selection;
+                if (selection === '') {
+                    selection = '\u00A0';
+                }
+                button.textContent = selection;
+            });
+        });
+    }
 }());
