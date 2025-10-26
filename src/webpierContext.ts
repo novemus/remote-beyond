@@ -68,13 +68,11 @@ export class Nat {
 export class Dht {
     public bootstrap: string = 'bootstrap.jami.net';
     public port: number = 0;
-    public network: number = 0;
     
     static parse(object: any) : Dht {
         const result = new Dht();
         result.bootstrap = object.bootstrap;
         result.port = parseInt(object.port);
-        result.network = parseInt(object.network);
         return result;
     }
 }
@@ -161,43 +159,59 @@ export class Context {
     }
 
     public async init(pier: string) {
-        const { publicKey, privateKey } = forge.pki.rsa.generateKeyPair(2048);
-
-        const cert = forge.pki.createCertificate();
-
-        cert.publicKey = publicKey;
-        cert.serialNumber = new Date().getTime().toString(16);
-        cert.validity.notBefore = new Date();
-        cert.validity.notAfter = new Date();
-        cert.validity.notAfter.setFullYear(cert.validity.notBefore.getFullYear() + 5);
-
-        const attrs = [{
-            name: 'commonName',
-            value: pier
-        }];
-
-        cert.setSubject(attrs);
-        cert.setIssuer(attrs);
-        cert.sign(privateKey);
-
         this.config.pier = pier;
         this.config.repo = this.home + '/' + Array.prototype.map.call(new TextEncoder().encode(pier), x => ('00' + x.toString(16)).slice(-2)).join('');
 
         this.services = new Map<string, Service[]>();
-        this.services.set(pier, []);
 
-        fs.mkdirSync(this.home, { recursive: true });
+        if (fs.existsSync(this.config.repo + '/' + pier + '/private.key')) {
+            const lock = new HardLock(this.home + '/webpier.lock');
+            try {
+                await utils.writeJsonFile(this.home + '/webpier.json', this.config);
+                lock.release();
+            } catch (error) {
+                lock.release();
+                throw error;
+            }
+            await this.load();
+        } else {
+            this.config.log.folder = this.home + '/journal';
+            this.config.log.level = Logging.Debug;
 
-        const lock = new HardLock(this.home + '/webpier.lock');
-        try {
-            await utils.writeJsonFile(this.home + '/webpier.json', this.config);
-            fs.mkdirSync(this.config.repo + '/' + pier, { recursive: true });
-            fs.writeFileSync(this.config.repo + '/' + pier + '/cert.crt', forge.pki.certificateToPem(cert));
-            fs.writeFileSync(this.config.repo + '/' + pier + '/private.key', forge.pki.privateKeyToPem(privateKey));
-            lock.release();
-        } catch (error) {
-            lock.release();
-            throw error;
+            this.services.set(pier, []);
+
+            const { publicKey, privateKey } = forge.pki.rsa.generateKeyPair(2048);
+
+            const cert = forge.pki.createCertificate();
+
+            cert.publicKey = publicKey;
+            cert.serialNumber = new Date().getTime().toString(16);
+            cert.validity.notBefore = new Date();
+            cert.validity.notAfter = new Date();
+            cert.validity.notAfter.setFullYear(cert.validity.notBefore.getFullYear() + 5);
+
+            const attrs = [{
+                name: 'commonName',
+                value: pier
+            }];
+
+            cert.setSubject(attrs);
+            cert.setIssuer(attrs);
+            cert.sign(privateKey);
+
+            fs.mkdirSync(this.home, { recursive: true });
+
+            const lock = new HardLock(this.home + '/webpier.lock');
+            try {
+                await utils.writeJsonFile(this.home + '/webpier.json', this.config);
+                fs.mkdirSync(this.config.repo + '/' + pier, { recursive: true });
+                fs.writeFileSync(this.config.repo + '/' + pier + '/cert.crt', forge.pki.certificateToPem(cert));
+                fs.writeFileSync(this.config.repo + '/' + pier + '/private.key', forge.pki.privateKeyToPem(privateKey));
+                lock.release();
+            } catch (error) {
+                lock.release();
+                throw error;
+            }
         }
     }
 
@@ -233,30 +247,30 @@ export class Context {
         return JSON.parse(JSON.stringify(this.config));
     }
 
+    public async setConfig(pier: string, nat: Nat, dht: Dht, email: Email) {
+        this.config.nat = JSON.parse(JSON.stringify(nat));
+        this.config.dht = JSON.parse(JSON.stringify(dht));
+        this.config.email = JSON.parse(JSON.stringify(email));
+        if (pier !== this.config.pier) {
+            await this.init(pier);
+        } else {
+            const lock = new HardLock(this.home + '/webpier.lock');
+            try {
+                await utils.writeJsonFile(this.home + '/webpier.json', this.config);
+                lock.release();
+            } catch (error) {
+                lock.release();
+                throw error;
+            }
+        }
+    }
+
     public getServices() : Map<string, Service[]> {
         const result = new Map<string, Service[]>();
         this.services.forEach((services, pier) => {
             result.set(pier, JSON.parse(JSON.stringify(services)));
         });
         return result;
-    }
-
-    public async setConfig(config: Config) {
-        if (config.pier !== this.config.pier) {
-            throw new Error('Wrong pier');
-        }
-        if (config.repo !== this.config.repo) {
-            throw new Error('Wrong repo');
-        }
-        this.config = JSON.parse(JSON.stringify(config));
-        const lock = new HardLock(this.home + '/webpier.lock');
-        try {
-            await utils.writeJsonFile(this.home + '/webpier.json', this.config);
-            lock.release();
-        } catch (error) {
-            lock.release();
-            throw error;
-        }
     }
 
     public getService(pier: string, name: string) : Service {

@@ -12,7 +12,7 @@
         }
     });
 
-    document.getElementById('apply').addEventListener('click', () => {
+    document.getElementById('change-service').addEventListener('click', () => {
         const pier = document.getElementById('single-pier') || document.getElementById('multi-pier');
         const data = {
             name: document.getElementById('service').value,
@@ -30,21 +30,13 @@
         }
 
         vscode.postMessage({
-            type: 'apply',
+            type: 'change-service',
             service: data
         });
     });
 
-    document.querySelectorAll('input[type="text"]').forEach(input => {
-        input.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                document.getElementById('apply').click();
-            }
-        });
-    });
-
-    const checkboxes = document.querySelectorAll('.dropdown-content input[type="checkbox"]');
-    if (checkboxes) {
+    const dropSelector = document.querySelectorAll('.dropdown-content input[type="checkbox"]');
+    if (dropSelector) {
         document.getElementById('multi-pier').addEventListener('click', () => {
             document.getElementById("dropdown-content").classList.toggle("show");
         });
@@ -59,11 +51,11 @@
             }
         };
 
-        checkboxes.forEach(checkbox => {
+        dropSelector.forEach(checkbox => {
             checkbox.addEventListener('change', () => {
                 const button = document.getElementById('multi-pier');
                 let selection = '';
-                checkboxes.forEach(checkbox => {
+                dropSelector.forEach(checkbox => {
                     if (checkbox.checked) {
                         if (selection !== '') {
                             selection += ' ';

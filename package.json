@@ -44,38 +44,43 @@
       },
       {
         "command": "remote-beyond.startService",
-        "title": "Start service",
+        "title": "Start webpier service",
         "icon": "$(play-circle)"
       },
       {
         "command": "remote-beyond.stopService",
-        "title": "Stop service",
+        "title": "Stop webpier service",
         "icon": "$(stop-circle)"
       },
       {
         "command": "remote-beyond.addImportService",
-        "title": "Add service",
+        "title": "Add webpier import service",
         "icon": "$(new-file)"
       },
       {
         "command": "remote-beyond.addExportService",
-        "title": "Add service",
+        "title": "Add webpier export service",
         "icon": "$(new-file)"
       },
       {
         "command": "remote-beyond.delService",
-        "title": "Delete service",
+        "title": "Delete webpier service",
         "icon": "$(notebook-delete-cell)"
       },
       {
         "command": "remote-beyond.openServiceEditor",
-        "title": "Edit service",
-        "icon": "$(settings-edit)"
+        "title": "Edit webpier service",
+        "icon": "$(edit)"
       },
       {
-        "command": "remote-beyond.closeServiceEditor",
-        "title": "Close editor",
+        "command": "remote-beyond.closeEditor",
+        "title": "Close service editor",
         "icon": "$(close)"
+      },
+      {
+        "command": "remote-beyond.openContextEditor",
+        "title": "Edit webpier context",
+        "icon": "$(gear)"
       }
     ],
     "viewsContainers": {
@@ -97,17 +102,17 @@
         },
         {
           "type": "webview",
-          "id": "webpierImportEditor",
-          "name": "Editor: import",
+          "id": "webpierServiceEditor",
+          "name": "Editor",
           "icon": "wrench",
-          "when": "context.edit == 'import'"
+          "when": "context.edit === 'import' || context.edit === 'export'"
         },
         {
           "type": "webview",
-          "id": "webpierExportEditor",
-          "name": "Editor: export",
+          "id": "webpierContextEditor",
+          "name": "Editor",
           "icon": "wrench",
-          "when": "context.edit == 'export'"
+          "when": "context.edit === 'context'"
         },
         {
           "id": "webpierImport",
@@ -134,8 +139,8 @@
           "when": "view == webpierImport"
         },
         {
-          "command": "remote-beyond.closeServiceEditor",
-          "when": "view == webpierImportEditor || view == webpierExportEditor",
+          "command": "remote-beyond.closeEditor",
+          "when": "view == webpierServiceEditor || view == webpierContextEditor",
           "group": "navigation"
         },
         {
@@ -146,6 +151,11 @@
         {
           "command": "remote-beyond.addExportService",
           "when": "view == webpierExport",
+          "group": "navigation"
+        },
+        {
+          "command": "remote-beyond.openContextEditor",
+          "when": "view === webpierExport || view == webpierImport",
           "group": "navigation"
         }
       ],
@@ -175,7 +185,7 @@
     "viewsWelcome": [
       {
         "view": "webpierStartup",
-        "contents": "To get started you need to install [WebPier](https://github.com/novemus/webpier/releases/latest) application and define the webpier identity wich consists from the Owner and Pier identifiers. The Owner name should be an email address, if you want to use Email as the rendezvous in addition to DHT network, and the Pier name must be unique for the Owner. Then you can setup preferred rendezvous service and define a STUN server in the extension setting.\n[Init WebPier Context](command:remote-beyond.startup)"
+        "contents": "To get started you need to install [WebPier](https://github.com/novemus/webpier/releases/latest) application and define the webpier identity wich consists of the Owner and the Pier names. The Owner name should be an email address, if you want to use Email as the rendezvous in addition to DHT network, and the Pier name must be unique for the Owner.\n[Init WebPier Context](command:remote-beyond.startup)"
       }
     ]
   },

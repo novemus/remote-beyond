@@ -15,7 +15,7 @@ table {
     table-layout: fixed;
 }
 td {
-    padding: 6px 8px;
+    padding: 8px;
     vertical-align: middle;
 }
 td:first-child {
@@ -30,9 +30,9 @@ td:last-child {
 input[type="text"]:disabled {
     color: var(--vscode-disabledForeground);
 }
-input[type="text"] {
+input[type="text"], input[type="password"] {
     width: 100%;
-    padding: 6px 8px;
+    padding: 8px;
     background-color: var(--vscode-input-background);
     color: var(--vscode-input-foreground);
     border: 1px solid var(--vscode-input-border);
@@ -41,7 +41,7 @@ input[type="text"] {
     font-family: var(--vscode-font-family);
     box-sizing: border-box;
 }
-input[type="text"]:focus {
+input[type="text"]:focus, input[type="password"]:focus {
     outline: 1px solid var(--vscode-focusBorder);
     border-color: var(--vscode-focusBorder);
 }
@@ -54,13 +54,21 @@ input[type="checkbox"] {
 input[type="checkbox"]:disabled {
     color: var(--vscode-disabledForeground);
 }
+input[type="file"]::file-selector-button {
+    padding: 8px;
+    background-color: var(--vscode-button-background);
+    color: var(--vscode-button-foreground);
+    border: none;
+}
+input[type="file"]::file-selector-button:hover {
+  background-color: var(--vscode-button-hoverBackground);
+}
 select {
     width: 100%;
     padding: 5px;
     background-color: var(--vscode-dropdown-background);
     color: var(--vscode-dropdown-foreground);
-    border: 1px solid var(--vscode-dropdown-border);
-    border-radius: 2px;
+    border: 1px solid var(--vscode-input-border);
     font-size: 13px;
     font-family: var(--vscode-font-family);
     cursor: pointer;
@@ -73,12 +81,14 @@ select:focus {
 select:disabled {
     color: var(--vscode-disabledForeground);
 }
+summary {
+    cursor: pointer;
+}
 .apply-button {
-    padding: 8px 14px;
+    padding: 8px;
     background-color: var(--vscode-button-background);
     color: var(--vscode-button-foreground);
     border: none;
-    border-radius: 2px;
     cursor: pointer;
     font-size: 13px;
     font-family: var(--vscode-font-family);
@@ -127,7 +137,7 @@ select:disabled {
 }
 .multi-selector {
     width: 100%;
-    padding: 6px 8px;
+    padding: 8px;
     margin: 0;
     text-align: left;
     border: 1px solid var(--vscode-input-border);
@@ -137,6 +147,7 @@ select:disabled {
     color: var(--vscode-input-foreground);
     background-color: var(--vscode-input-background);
     display: block;
+    cursor: pointer;
 }
 .multi-selector:focus {
     outline: 1px solid var(--vscode-focusBorder);

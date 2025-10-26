@@ -41,6 +41,7 @@ export class WebpierDataProvider implements vscode.TreeDataProvider<WebpierDataI
     }
 
     rebuild() : void {
+        this.services = new Map<string, WebpierService>();
         const local = this.wpc.getPier();
         for(const [pier, services] of this.wpc.getServices()) {
             if (this.remote && pier !== local || !this.remote && pier === local) {
@@ -92,9 +93,11 @@ export class WebpierService extends WebpierDataItem {
         this.contextValue = 'webpier.asleep.service';
         this.iconPath = new vscode.ThemeIcon('broadcast', new vscode.ThemeColor('debugIcon.breakpointDisabledForeground'));
         this.tooltip = 'asleep';
-        for(const pier of this.pier.split(' ')) {
-            this.nodes.set(pier, new WebpierNode(utils.prefix(pier, '/'), utils.postfix(pier, '/'), this));
-        };
+        if (this.pier !== '') {
+            for(const pier of this.pier.split(' ')) {
+                this.nodes.set(pier, new WebpierNode(utils.prefix(pier, '/'), utils.postfix(pier, '/'), this));
+            };
+        }
     }
 
     setStatus(status: ServiceStatus, tunnels: string[]) {

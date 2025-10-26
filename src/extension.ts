@@ -1,12 +1,19 @@
 import * as vscode from 'vscode';
 import { ServiceStatus, WebpierService, WebpierDataProvider } from './webpierDataProvider';
 import { WebpierServiceEditor } from './webpierServiceEditor';
+import { WebpierContextEditor } from './webpierContextEditor';
 import * as webpier from './webpierContext';
 import * as os from 'os';
 import * as fs from 'fs';
 
 export async function activate(vsc: vscode.ExtensionContext) {
-	const home = os.homedir() + '/.webpier';
+	const config = vscode.workspace.getConfiguration('remote-beyond');
+    
+	let home = config.get<string>('webpier.home', '');
+	if (home === '') {
+		home = os.homedir() + '/.webpier';
+	}
+
 	const wpc = new webpier.Context(home);
 
 	const imports = new WebpierDataProvider(vsc, wpc, true);
@@ -28,12 +35,14 @@ export async function activate(vsc: vscode.ExtensionContext) {
 		fs.mkdirSync(home, { recursive: true });
 	}
 
-	const editor = new WebpierServiceEditor(vsc.extensionUri, wpc);
+	const serviceEditor = new WebpierServiceEditor(vsc.extensionUri, wpc);
 	vsc.subscriptions.push(
-		vscode.window.registerWebviewViewProvider('webpierImportEditor', editor)
+		vscode.window.registerWebviewViewProvider('webpierServiceEditor', serviceEditor)
 	);
+
+	const contextEditor = new WebpierContextEditor(vsc.extensionUri, wpc, imports, exports);
 	vsc.subscriptions.push(
-		vscode.window.registerWebviewViewProvider('webpierExportEditor', editor)
+		vscode.window.registerWebviewViewProvider('webpierContextEditor', contextEditor)
 	);
 
 	vsc.subscriptions.push(vscode.commands.registerCommand('remote-beyond.startService', (item: WebpierService) => {
@@ -47,8 +56,14 @@ export async function activate(vsc: vscode.ExtensionContext) {
 	}));
 
 	vsc.subscriptions.push(vscode.commands.registerCommand('remote-beyond.openServiceEditor', (item: WebpierService) => {
-		editor.populate(wpc.getService(item.root.remote ? item.pier : wpc.getPier(), item.name), item.root);
+		vscode.commands.executeCommand('setContext', 'context.edit', null);
+		serviceEditor.update(wpc.getService(item.root.remote ? item.pier : wpc.getPier(), item.name), item.root);
 		vscode.commands.executeCommand('setContext', 'context.edit', item.root.remote ? 'import' : 'export');
+	}));
+
+	vsc.subscriptions.push(vscode.commands.registerCommand('remote-beyond.openContextEditor', () => {
+		vscode.commands.executeCommand('setContext', 'context.edit', null);
+		vscode.commands.executeCommand('setContext', 'context.edit', 'context');
 	}));
 
 	vsc.subscriptions.push(vscode.commands.registerCommand('remote-beyond.delService', (item: WebpierService) => {
@@ -57,16 +72,18 @@ export async function activate(vsc: vscode.ExtensionContext) {
 	}));
 
 	vsc.subscriptions.push(vscode.commands.registerCommand('remote-beyond.addImportService', () => {
-		editor.populate(new webpier.Service(), imports);
+		vscode.commands.executeCommand('setContext', 'context.edit', null);
+		serviceEditor.update(new webpier.Service(), imports);
 		vscode.commands.executeCommand('setContext', 'context.edit', 'import');
 	}));
 
 	vsc.subscriptions.push(vscode.commands.registerCommand('remote-beyond.addExportService', () => {
-		editor.populate(new webpier.Service(), exports);
+		vscode.commands.executeCommand('setContext', 'context.edit', null);
+		serviceEditor.update(new webpier.Service(), exports);
 		vscode.commands.executeCommand('setContext', 'context.edit', 'export');
 	}));
 
-	vsc.subscriptions.push(vscode.commands.registerCommand('remote-beyond.closeServiceEditor', () => {
+	vsc.subscriptions.push(vscode.commands.registerCommand('remote-beyond.closeEditor', () => {
 		vscode.commands.executeCommand('setContext', 'context.edit', null);
 	}));
 
@@ -87,13 +104,18 @@ export async function activate(vsc: vscode.ExtensionContext) {
 			}
 		});
 
-		try {
-			await wpc.init(owner + '/' + pier);
-			imports.rebuild();
-			exports.rebuild();
-			vscode.commands.executeCommand('setContext', 'context.uploaded', true);
-		} catch (error) {
-			vscode.window.showInformationMessage(`Could not init webpier context: ${error}`);
+		if(owner && pier) {
+			try {
+				await wpc.init(owner + '/' + pier);
+				imports.rebuild();
+				exports.rebuild();
+				vscode.commands.executeCommand('setContext', 'context.uploaded', true);
+				vscode.commands.executeCommand('setContext', 'context.edit', 'context');
+			} catch (error) {
+				vscode.window.showInformationMessage(`Could not init webpier context: ${error}`);
+			}
+		} else {
+			vscode.window.showInformationMessage('You must define the webpier identity!');
 		}
 	}));
 
