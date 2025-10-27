@@ -46,3 +46,38 @@ export function getNonce() {
 	return text;
 }
 
+export function fnv1aHash(str: string) {
+    const fnvPrime: bigint = 1099511628211n;
+    const fnvOffsetBasis: bigint = 14695981039346656037n;
+    let hash: bigint = fnvOffsetBasis;
+    for (let i = 0; i < str.length; i++) {
+        hash ^= BigInt(str.charCodeAt(i));
+        hash = (hash * fnvPrime) & 0xffffffffffffffffn;
+    }
+    return hash;
+}
+
+export function murmurHash(str: string): string {
+    const seed: bigint = 0n;
+    const m: bigint = 0xc6a4a7935bd1e995n;
+    const r: bigint = 47n;
+    let h: bigint = seed ^ BigInt(str.length);
+
+    for (let i = 0; i < str.length; i += 8) {
+        let k: bigint = 0n;
+        for (let j = 0; j < 8 && i + j < str.length; j++) {
+            k |= BigInt(str.charCodeAt(i + j)) << BigInt(j * 8);
+        }
+        k = (k * m) & 0xffffffffffffffffn;
+        k ^= k >> r;
+        k = (k * m) & 0xffffffffffffffffn;
+        h = (h * m) & 0xffffffffffffffffn;
+        h ^= k;
+    }
+
+    h ^= h >> 13n;
+    h = (h * m) & 0xffffffffffffffffn;
+    h ^= h >> 15n;
+
+    return h.toString();
+}

@@ -1,8 +1,11 @@
 import * as vscode from 'vscode';
-import * as utils  from './utils';
+import * as os from 'os';
+import * as child from 'child_process';
 import * as fs from 'fs';
 import * as ext from 'fs-ext';
 import * as forge from 'node-forge';
+import * as reg from '@vscode/windows-registry';
+import * as utils  from './utils';
 
 class SoftLock {
     private fd: number = -1;
@@ -154,8 +157,9 @@ export class Service {
 export class Context {
     private config: Config = new Config();
     private services: Map<string, Service[]> = new Map<string, Service[]>();
+    private autostart: boolean = false;
 
-    constructor(private home: string) {
+    constructor(public readonly home: string) {
     }
 
     public async init(pier: string) {
@@ -367,3 +371,191 @@ export class Context {
         }
     }
 };
+
+export function getModulePath(name: string) : string {
+    let conf = os.platform() === 'darwin' ? '/Applications/WebPier.app/Contents/Resources/webpier.conf' 
+             : os.platform() === 'win32' ? 'Software\\WebPier' : '/etc/webpier/webpier.conf';
+
+    const config = vscode.workspace.getConfiguration('remote-beyond');
+    if (config.has('webpier.config')) {
+        const custom = config.get<string>('webpier.config', '');
+        if (custom !== '') {
+            conf = custom;
+        }
+    }
+
+    if (os.platform() === 'win32') {
+        const path = reg.GetStringRegKey('HKEY_LOCAL_MACHINE', conf, name);
+        if (path) {
+            return path;
+        }
+    } else {
+        const data = fs.readFileSync(conf, { encoding: 'utf-8' });
+        for(const line of data.split('\n')) {
+            if (line.startsWith(name + '=')) {
+                return utils.postfix(line, '=');
+            }
+        }
+    }
+    throw Error(`Could not find path to module: ${name}`);
+}
+
+export function verifyAutostart(command: string, args: string) : boolean {
+    if (os.platform() === 'win32') {
+        const result = child.spawnSync('schtasks', [
+            '/Query',
+            '/TN',
+            '\\WebPier\\Task #' + utils.fnv1aHash(command + args),
+            '/HRESULT'
+        ]);
+
+        return result.status === 0;
+    } else {
+        const record = '@reboot ' + command + ' ' + args;
+
+        const result = child.spawnSync('crontab', ['-l']);
+        if (result.error) {
+            throw result.error;
+        }
+
+        const data = result.stdout.toString();
+        for(const line of data.split('\n')) {
+            if (line === record) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+}
+
+export async function assignAutostart(command: string, args: string) {
+    if (os.platform() === 'win32') {
+        var config =
+`<?xml version="1.0" encoding="UTF-16"?>
+<Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
+<RegistrationInfo>
+    <Date>${new Date().toISOString()}</Date>
+    <Author>WebPier</Author>
+    <Description>WebPier backend service</Description>
+</RegistrationInfo>
+<Triggers>
+    <BootTrigger>
+    <Enabled>true</Enabled>
+    <Delay>PT30S</Delay>
+    </BootTrigger>
+</Triggers>
+<Principals>
+    <Principal id="Author">
+    <LogonType>S4U</LogonType>
+    <RunLevel>LeastPrivilege</RunLevel>
+    </Principal>
+</Principals>
+<Settings>
+    <MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>
+    <DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>
+    <StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>
+    <AllowHardTerminate>true</AllowHardTerminate>
+    <StartWhenAvailable>true</StartWhenAvailable>
+    <RunOnlyIfNetworkAvailable>false</RunOnlyIfNetworkAvailable>
+    <IdleSettings>
+    <StopOnIdleEnd>false</StopOnIdleEnd>
+    <RestartOnIdle>false</RestartOnIdle>
+    </IdleSettings>
+    <AllowStartOnDemand>true</AllowStartOnDemand>
+    <Enabled>true</Enabled>
+    <Hidden>false</Hidden>
+    <RunOnlyIfIdle>false</RunOnlyIfIdle>
+    <WakeToRun>true</WakeToRun>
+    <ExecutionTimeLimit>PT0S</ExecutionTimeLimit>
+    <Priority>4</Priority>
+    <RestartOnFailure>
+    <Interval>PT1M</Interval>
+    <Count>30</Count>
+    </RestartOnFailure>
+</Settings>
+<Actions Context="Author">
+    <Exec>
+    <Command>${command}</Command>
+    <Arguments>${args}</Arguments>
+    </Exec>
+</Actions>
+</Task>`;
+
+        const id = utils.fnv1aHash(command + args);;
+        const xml = os.tmpdir()  + '/' + id + '.xml';
+
+        fs.writeFileSync(xml, config, { encoding: 'utf-16le' });
+
+        const result = child.spawnSync('powershell',
+            [
+                '-command', 
+                `Start-Process schtasks -ArgumentList '/Create /TN "\\WebPier\\Task #${id}" /XML "${xml}" /HRESULT' -Verb RunAs`
+            ]
+        );
+
+        if (result.error) {
+            throw result.error;
+        } else {
+            if (!verifyAutostart(command, args)) {
+                throw new Error(`Could not assign autostart for: ${command} ${args}`);
+            }
+        }
+    } else {
+        const record = '@reboot ' + command + ' ' + args;
+
+        const list = child.spawnSync('crontab', ['-l']);
+        if (list.error) {
+            throw list.error;
+        }
+
+        const data = list.stdout.toString();
+        for(const line of data.split('\n')) {
+            if (line === record) {
+                return;
+            }
+        }
+
+        const opts: child.SpawnSyncOptions = { input: record + '\n' + data };
+        const edit = child.spawnSync('crontab', opts);
+        if (edit.error) {
+            throw edit.error;
+        }
+    }
+}
+
+export async function revokeAutostart(command: string, args: string) {
+    if (os.platform() === 'win32') {
+        const id = utils.fnv1aHash(command + args);
+        const result = child.spawnSync('powershell',
+            [
+                '-command', 
+                `Start-Process schtasks -ArgumentList '/Delete /TN "\\WebPier\\Task #${id}" /F /HRESULT' -Verb RunAs`
+            ]
+        );
+
+        if (result.error) {
+            throw result.error;
+        } else {
+            if (verifyAutostart(command, args)) {
+                throw new Error(`Could not revoke autostart for: ${command} ${args}`);
+            }
+        }
+    } else {
+        const record = '@reboot ' + command + ' ' + args;
+
+        let list = child.spawnSync('crontab', ['-l']);
+        if (list.error) {
+            throw list.error;
+        }
+
+        const str = list.stdout.toString();
+        const data = list.stdout.toString().split('\n').filter(line => line !== record);
+
+        const opts: child.SpawnSyncOptions = { input: data.join('\n') };
+        const edit = child.spawnSync('crontab', opts);
+        if (edit.error) {
+            throw edit.error;
+        }
+    }
+}

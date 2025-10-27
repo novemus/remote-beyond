@@ -31,7 +31,7 @@ export class WebpierContextEditor implements vscode.WebviewViewProvider {
         });
     }
 
-    private async handleFormSubmit(context: webpier.Config) {
+    private async handleFormSubmit(context: any) {
         const pier = this.wpc.getPier();
         await this.wpc.setConfig(context.pier, context.nat, context.dht, context.email);
         vscode.commands.executeCommand('setContext', 'context.edit', null);
@@ -41,6 +41,12 @@ export class WebpierContextEditor implements vscode.WebviewViewProvider {
             this.imports.refresh();
             this.exports.refresh();
         }
+
+        if (context.autostart) {
+            webpier.assignAutostart(webpier.getModulePath('slipway'), `"${this.wpc.home}" daemon`);
+        } else {
+            webpier.revokeAutostart(webpier.getModulePath('slipway'), `"${this.wpc.home}" daemon`);
+        }
     }
 
     private getHtmlForWebview(webview: vscode.Webview) {
@@ -49,6 +55,7 @@ export class WebpierContextEditor implements vscode.WebviewViewProvider {
 
         const nonce = utils.getNonce();
         const config = this.wpc.getConfig();
+        const autostart = webpier.verifyAutostart(webpier.getModulePath('slipway'), `"${this.wpc.home}" daemon`);
 
         return `<!DOCTYPE html>
                 <html lang="en">
@@ -74,7 +81,7 @@ export class WebpierContextEditor implements vscode.WebviewViewProvider {
                                 </tr>
                                 <tr>
                                     <td><span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><label for="autostart">Autostart</label></td>
-                                    <td><input type="checkbox" id="autostart" name="autostart"></td>
+                                    <td><input type="checkbox" id="autostart" name="autostart" ${autostart ? 'checked' : ''}></td>
                                 </tr>
                             </table>
                         </details>

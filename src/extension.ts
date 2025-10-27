@@ -8,8 +8,8 @@ import * as fs from 'fs';
 
 export async function activate(vsc: vscode.ExtensionContext) {
 	const config = vscode.workspace.getConfiguration('remote-beyond');
-    
-	let home = config.get<string>('webpier.home', '');
+
+	let home = config.get<string>('webpier.context', '');
 	if (home === '') {
 		home = os.homedir() + '/.webpier';
 	}

@@ -22,8 +22,13 @@
           "remote-beyond.webpier.home": {
             "order": 1,
             "type": "string",
-            "default": "",
-            "description": "Path to the WebPier context directory.",
+            "description": "Path to the WebPier context directory. By default, the standard user-dependent directory for the WebPier application is used.",
+            "scope": "machine"
+          },
+          "remote-beyond.webpier.config": {
+            "order": 2,
+            "type": "string",
+            "description": "Path to the WebPier configuration file on Unix-like OS or registry key of the WebPier application on Windows OS. Only for non-standard installations.",
             "scope": "machine"
           }
         }
@@ -221,6 +226,7 @@
     "webpack-cli": "^6.0.1"
   },
   "dependencies": {
+    "@vscode/windows-registry": "^1.1.0",
     "fs-ext": "^2.1.1"
   }
 }
