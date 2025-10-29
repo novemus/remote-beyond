@@ -22,7 +22,7 @@
           "remote-beyond.webpier.home": {
             "order": 1,
             "type": "string",
-            "description": "Path to the WebPier context directory. By default, the standard user-dependent directory for the WebPier application is used.",
+            "description": "Path to the WebPier context directory. By default, the standard user-dependent directory for the WebPier application data is used.",
             "scope": "machine"
           },
           "remote-beyond.webpier.config": {

@@ -1,30 +1,49 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
+import * as fs from 'fs/promises';
 
 export async function readJsonFile(file: string): Promise<any> {
-    let uri : vscode.Uri = vscode.Uri.parse(file);
+    let uri : vscode.Uri;
     if (!path.isAbsolute(file)) {
         if (!vscode.workspace.workspaceFolders) {
             throw new Error('Could not get workspace location');
         }
         uri = vscode.Uri.joinPath(vscode.workspace.workspaceFolders[0].uri, file);
+    } else {
+        uri = vscode.Uri.file(file);
     }
 
-    const data = await vscode.workspace.fs.readFile(uri);
+    let data: Uint8Array;
+    if (uri.scheme === 'file' && vscode.workspace.workspaceFolders &&
+        !uri.toString().startsWith(vscode.workspace.workspaceFolders[0].uri.toString())) {
+        // File is outside workspace, use Node.js fs
+        data = await fs.readFile(uri.fsPath);
+    } else {
+        data = await vscode.workspace.fs.readFile(uri);
+    }
     return JSON.parse(data.toString());
 }
 
 export async function writeJsonFile(file: string, data: any) {
-    let uri : vscode.Uri = vscode.Uri.parse(file);
+    let uri : vscode.Uri;
     if (!path.isAbsolute(file)) {
         if (!vscode.workspace.workspaceFolders) {
             throw new Error('Could not get workspace location');
         }
         uri = vscode.Uri.joinPath(vscode.workspace.workspaceFolders[0].uri, file);
+    } else {
+        uri = vscode.Uri.file(file);
     }
 
     const encoder = new TextEncoder();
-    await vscode.workspace.fs.writeFile(uri, encoder.encode(JSON.stringify(data, null, 2)));
+    const content = encoder.encode(JSON.stringify(data, null, 2));
+    if (uri.scheme === 'file' && vscode.workspace.workspaceFolders &&
+        !uri.toString().startsWith(vscode.workspace.workspaceFolders[0].uri.toString())) {
+        // File is outside workspace, use Node.js fs
+        await fs.writeFile(uri.fsPath, content);
+    } else {
+        await vscode.workspace.fs.writeFile(uri, content);
+    }
 }
 
 export function prefix(line: string, delim: string) : string {

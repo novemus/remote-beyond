@@ -40,16 +40,22 @@ export class WebpierServiceEditor implements vscode.WebviewViewProvider {
 
     private async handleFormSubmit(service: webpier.Service) {
         if (this.tree && this.service) {
-            const pier = this.wpc.getPier();
-            if (this.service.name !== '') {
-                await this.wpc.delService(this.tree.remote ? this.service.pier : pier, this.service.name);
-                this.tree.remove(this.service.name, this.service.pier);
+            try {
+                const pier = this.wpc.getPier();
+                if (this.service.name !== '') {
+                    await this.wpc.delService(this.tree.remote ? this.service.pier : pier, this.service.name);
+                    this.tree.remove(this.service.name, this.service.pier);
+                }
+                service.local = this.tree.remote === false;
+                await this.wpc.setService(this.tree.remote ? service.pier : pier, service);
+                this.tree.insert(service.name, service.pier, service.address);
+                this.tree.refresh();
+                vscode.commands.executeCommand('setContext', 'context.edit', null);
+            } catch (error) {
+                vscode.window.showWarningMessage(`Could not change service parameters: ${error}`);
+                vscode.commands.executeCommand('setContext', 'context.edit', null);
+                vscode.commands.executeCommand('setContext', 'context.edit', this.tree.remote ? 'import' : 'export');
             }
-            service.local = this.tree.remote === false;
-            await this.wpc.setService(this.tree.remote ? service.pier : pier, service);
-            this.tree.insert(service.name, service.pier, service.address);
-            this.tree.refresh();
-            vscode.commands.executeCommand('setContext', 'context.edit', null);
         }
     }
 

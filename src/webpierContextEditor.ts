@@ -32,20 +32,34 @@ export class WebpierContextEditor implements vscode.WebviewViewProvider {
     }
 
     private async handleFormSubmit(context: any) {
-        const pier = this.wpc.getPier();
-        await this.wpc.setConfig(context.pier, context.nat, context.dht, context.email);
-        vscode.commands.executeCommand('setContext', 'context.edit', null);
-        if (context.pier !== pier) {
-            this.imports.rebuild();
-            this.exports.rebuild();
-            this.imports.refresh();
-            this.exports.refresh();
-        }
+        try {
+            const pier = this.wpc.getPier();
+            const command = webpier.getModulePath('slipway');
+            const args = `"${this.wpc.home}" daemon`;
+            const autostart = webpier.verifyAutostart(command, args);
 
-        if (context.autostart) {
-            webpier.assignAutostart(webpier.getModulePath('slipway'), `"${this.wpc.home}" daemon`);
-        } else {
-            webpier.revokeAutostart(webpier.getModulePath('slipway'), `"${this.wpc.home}" daemon`);
+            await this.wpc.setConfig(context.pier, context.nat, context.dht, context.email);
+            if (context.pier !== pier) {
+                this.imports.rebuild();
+                this.exports.rebuild();
+                this.imports.refresh();
+                this.exports.refresh();
+                webpier.revokeAutostart(command, args);
+            }
+
+            if (context.pier !== pier || context.autostart !== autostart) {
+                if (context.autostart) {
+                    webpier.assignAutostart(command, `"${this.wpc.home}" daemon`);
+                } else {
+                    webpier.revokeAutostart(command, `"${this.wpc.home}" daemon`);
+                }
+            }
+
+            vscode.commands.executeCommand('setContext', 'context.edit', null);
+        } catch (error) {
+            vscode.window.showWarningMessage(`Could not change some parameters of the context: ${error}`);
+            vscode.commands.executeCommand('setContext', 'context.edit', null);
+            vscode.commands.executeCommand('setContext', 'context.edit', 'context');
         }
     }
 

@@ -5,15 +5,28 @@ import { WebpierContextEditor } from './webpierContextEditor';
 import * as webpier from './webpierContext';
 import * as os from 'os';
 import * as fs from 'fs';
+import * as path from 'path';
 
 export async function activate(vsc: vscode.ExtensionContext) {
 	const config = vscode.workspace.getConfiguration('remote-beyond');
 
-	let home = config.get<string>('webpier.context', '');
+	let home = config.get<string>('webpier.home', '');
 	if (home === '') {
-		home = os.homedir() + '/.webpier';
+		if (os.platform() === 'win32') {
+			if (process.env.LOCALAPPDATA) {
+				home = path.join(process.env.LOCALAPPDATA, 'webpier');
+			} else {
+				home = path.join(os.homedir(), 'AppData', 'Local', 'webpier');
+			}
+		}
+		else if(os.platform() === 'darwin') {
+			home = path.join(os.homedir(), 'Local Settings', 'Application Data', 'webpier');
+		} else {
+			home = path.join(os.homedir(), '.webpier');
+		}
 	}
 
+	home = path.normalize(home);
 	const wpc = new webpier.Context(home);
 
 	const imports = new WebpierDataProvider(vsc, wpc, true);
@@ -112,10 +125,10 @@ export async function activate(vsc: vscode.ExtensionContext) {
 				vscode.commands.executeCommand('setContext', 'context.uploaded', true);
 				vscode.commands.executeCommand('setContext', 'context.edit', 'context');
 			} catch (error) {
-				vscode.window.showInformationMessage(`Could not init webpier context: ${error}`);
+				vscode.window.showWarningMessage(`Could not init webpier context: ${error}`);
 			}
 		} else {
-			vscode.window.showInformationMessage('You must define the webpier identity!');
+			vscode.window.showWarningMessage('You must define the webpier identity!');
 		}
 	}));
 

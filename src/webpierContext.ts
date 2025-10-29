@@ -405,7 +405,7 @@ export function verifyAutostart(command: string, args: string) : boolean {
         const result = child.spawnSync('schtasks', [
             '/Query',
             '/TN',
-            '\\WebPier\\Task #' + utils.fnv1aHash(command + args),
+            '\\WebPier\\Task #' + utils.fnv1aHash(command + args).toString(),
             '/HRESULT'
         ]);
 
@@ -414,8 +414,8 @@ export function verifyAutostart(command: string, args: string) : boolean {
         const record = '@reboot ' + command + ' ' + args;
 
         const result = child.spawnSync('crontab', ['-l']);
-        if (result.error) {
-            throw result.error;
+        if (result.status !== 0) {
+            throw new Error(result.stderr.toString());
         }
 
         const data = result.stdout.toString();
@@ -429,63 +429,63 @@ export function verifyAutostart(command: string, args: string) : boolean {
     }
 }
 
-export async function assignAutostart(command: string, args: string) {
+export function assignAutostart(command: string, args: string) {
     if (os.platform() === 'win32') {
         var config =
 `<?xml version="1.0" encoding="UTF-16"?>
 <Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
-<RegistrationInfo>
-    <Date>${new Date().toISOString()}</Date>
-    <Author>WebPier</Author>
-    <Description>WebPier backend service</Description>
-</RegistrationInfo>
-<Triggers>
-    <BootTrigger>
-    <Enabled>true</Enabled>
-    <Delay>PT30S</Delay>
-    </BootTrigger>
-</Triggers>
-<Principals>
-    <Principal id="Author">
-    <LogonType>S4U</LogonType>
-    <RunLevel>LeastPrivilege</RunLevel>
-    </Principal>
-</Principals>
-<Settings>
-    <MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>
-    <DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>
-    <StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>
-    <AllowHardTerminate>true</AllowHardTerminate>
-    <StartWhenAvailable>true</StartWhenAvailable>
-    <RunOnlyIfNetworkAvailable>false</RunOnlyIfNetworkAvailable>
-    <IdleSettings>
-    <StopOnIdleEnd>false</StopOnIdleEnd>
-    <RestartOnIdle>false</RestartOnIdle>
-    </IdleSettings>
-    <AllowStartOnDemand>true</AllowStartOnDemand>
-    <Enabled>true</Enabled>
-    <Hidden>false</Hidden>
-    <RunOnlyIfIdle>false</RunOnlyIfIdle>
-    <WakeToRun>true</WakeToRun>
-    <ExecutionTimeLimit>PT0S</ExecutionTimeLimit>
-    <Priority>4</Priority>
-    <RestartOnFailure>
-    <Interval>PT1M</Interval>
-    <Count>30</Count>
-    </RestartOnFailure>
-</Settings>
-<Actions Context="Author">
-    <Exec>
-    <Command>${command}</Command>
-    <Arguments>${args}</Arguments>
-    </Exec>
-</Actions>
-</Task>`;
+    <RegistrationInfo>
+        <Date>${new Date().toISOString()}</Date>
+        <Author>WebPier</Author>
+        <Description>WebPier backend service</Description>
+    </RegistrationInfo>
+    <Triggers>
+        <BootTrigger>
+            <Enabled>true</Enabled>
+            <Delay>PT30S</Delay>
+        </BootTrigger>
+    </Triggers>
+    <Principals>
+        <Principal id="Author">
+            <LogonType>S4U</LogonType>
+            <RunLevel>LeastPrivilege</RunLevel>
+        </Principal>
+    </Principals>
+    <Settings>
+        <MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>
+        <DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>
+        <StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>
+        <AllowHardTerminate>true</AllowHardTerminate>
+        <StartWhenAvailable>true</StartWhenAvailable>
+        <RunOnlyIfNetworkAvailable>false</RunOnlyIfNetworkAvailable>
+        <IdleSettings>
+            <StopOnIdleEnd>false</StopOnIdleEnd>
+            <RestartOnIdle>false</RestartOnIdle>
+        </IdleSettings>
+        <AllowStartOnDemand>true</AllowStartOnDemand>
+        <Enabled>true</Enabled>
+        <Hidden>false</Hidden>
+        <RunOnlyIfIdle>false</RunOnlyIfIdle>
+        <WakeToRun>true</WakeToRun>
+        <ExecutionTimeLimit>PT0S</ExecutionTimeLimit>
+        <Priority>4</Priority>
+        <RestartOnFailure>
+            <Interval>PT1M</Interval>
+            <Count>30</Count>
+        </RestartOnFailure>
+    </Settings>
+    <Actions Context="Author">
+        <Exec>
+            <Command>${command.replace(/"/g, '&quot;').replace(/'/g, '&apos;')}</Command>
+            <Arguments>${args.replace(/"/g, '&quot;').replace(/'/g, '&apos;')}</Arguments>
+        </Exec>
+    </Actions>
+</Task>`.replace(/\r?\n/g, '\r\n');
 
-        const id = utils.fnv1aHash(command + args);;
-        const xml = os.tmpdir()  + '/' + id + '.xml';
+        const id = utils.fnv1aHash(command + args).toString();
+        const xml = os.tmpdir()  + '\\' + id + '.xml';
 
-        fs.writeFileSync(xml, config, { encoding: 'utf-16le' });
+        fs.writeFileSync(xml, config, { encoding: 'utf-8' });
 
         const result = child.spawnSync('powershell',
             [
@@ -494,19 +494,15 @@ export async function assignAutostart(command: string, args: string) {
             ]
         );
 
-        if (result.error) {
-            throw result.error;
-        } else {
-            if (!verifyAutostart(command, args)) {
-                throw new Error(`Could not assign autostart for: ${command} ${args}`);
-            }
+        if (result.status !== 0) {
+            throw new Error(result.stderr.toString());
         }
     } else {
         const record = '@reboot ' + command + ' ' + args;
 
         const list = child.spawnSync('crontab', ['-l']);
-        if (list.error) {
-            throw list.error;
+        if (list.status !== 0) {
+            throw new Error(list.stderr.toString());
         }
 
         const data = list.stdout.toString();
@@ -518,15 +514,15 @@ export async function assignAutostart(command: string, args: string) {
 
         const opts: child.SpawnSyncOptions = { input: record + '\n' + data };
         const edit = child.spawnSync('crontab', opts);
-        if (edit.error) {
-            throw edit.error;
+        if (edit.status !== 0) {
+            throw new Error(edit.stderr.toString());
         }
     }
 }
 
-export async function revokeAutostart(command: string, args: string) {
+export function revokeAutostart(command: string, args: string) {
     if (os.platform() === 'win32') {
-        const id = utils.fnv1aHash(command + args);
+        const id = utils.fnv1aHash(command + args).toString();
         const result = child.spawnSync('powershell',
             [
                 '-command', 
@@ -534,28 +530,23 @@ export async function revokeAutostart(command: string, args: string) {
             ]
         );
 
-        if (result.error) {
-            throw result.error;
-        } else {
-            if (verifyAutostart(command, args)) {
-                throw new Error(`Could not revoke autostart for: ${command} ${args}`);
-            }
+        if (result.status !== 0) {
+            throw new Error(result.stderr.toString());
         }
     } else {
         const record = '@reboot ' + command + ' ' + args;
 
         let list = child.spawnSync('crontab', ['-l']);
-        if (list.error) {
-            throw list.error;
+        if (list.status !== 0) {
+            throw new Error(list.stderr.toString());
         }
 
-        const str = list.stdout.toString();
         const data = list.stdout.toString().split('\n').filter(line => line !== record);
 
         const opts: child.SpawnSyncOptions = { input: data.join('\n') };
         const edit = child.spawnSync('crontab', opts);
-        if (edit.error) {
-            throw edit.error;
+        if (edit.status !== 0) {
+            throw new Error(edit.stderr.toString());
         }
     }
 }
