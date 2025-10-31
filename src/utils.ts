@@ -76,27 +76,45 @@ export function fnv1aHash(str: string) {
     return hash;
 }
 
-export function murmurHash(str: string): string {
-    const seed: bigint = 0n;
+export function murmurHash(str: string, seed: bigint = 0xc70f6907n): bigint {
     const m: bigint = 0xc6a4a7935bd1e995n;
-    const r: bigint = 47n;
-    let h: bigint = seed ^ BigInt(str.length);
+    const r: number = 47;
 
-    for (let i = 0; i < str.length; i += 8) {
-        let k: bigint = 0n;
-        for (let j = 0; j < 8 && i + j < str.length; j++) {
-            k |= BigInt(str.charCodeAt(i + j)) << BigInt(j * 8);
-        }
+    const encoder = new TextEncoder();
+    const data = encoder.encode(str);
+    const len = data.length;
+
+    let h: bigint = seed ^ ((BigInt(len) * m) & 0xffffffffffffffffn);
+
+    let i = 0;
+    while (len - i >= 8) {
+        const view = new DataView(data.buffer, i, 8);
+        let k: bigint = view.getBigUint64(0, true);
         k = (k * m) & 0xffffffffffffffffn;
-        k ^= k >> r;
+        k ^= k >> BigInt(r);
         k = (k * m) & 0xffffffffffffffffn;
-        h = (h * m) & 0xffffffffffffffffn;
         h ^= k;
+        h = (h * m) & 0xffffffffffffffffn;
+        i += 8;
     }
 
-    h ^= h >> 13n;
-    h = (h * m) & 0xffffffffffffffffn;
-    h ^= h >> 15n;
+    const remaining = len - i;
+    let tail: bigint = 0n;
+    switch (remaining) {
+        case 7: tail ^= BigInt(data[i + 6]) << 48n;
+        case 6: tail ^= BigInt(data[i + 5]) << 40n;
+        case 5: tail ^= BigInt(data[i + 4]) << 32n;
+        case 4: tail ^= BigInt(data[i + 3]) << 24n;
+        case 3: tail ^= BigInt(data[i + 2]) << 16n;
+        case 2: tail ^= BigInt(data[i + 1]) << 8n;
+        case 1: tail ^= BigInt(data[i]);
+                h ^= tail;
+                h = (h * m) & 0xffffffffffffffffn;
+    }
 
-    return h.toString();
+    h ^= h >> BigInt(r);
+    h = (h * m) & 0xffffffffffffffffn;
+    h ^= h >> BigInt(r);
+
+    return h;
 }

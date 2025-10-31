@@ -204,6 +204,7 @@ export class Context {
             cert.sign(privateKey);
 
             fs.mkdirSync(this.home, { recursive: true });
+            fs.mkdirSync(this.config.log.folder, { recursive: true });
 
             const lock = new HardLock(this.home + '/webpier.lock');
             try {
@@ -407,13 +408,13 @@ export function verifyAutostart(command: string, args: string) : boolean {
             '/TN',
             '\\WebPier\\Task #' + utils.fnv1aHash(command + args).toString(),
             '/HRESULT'
-        ]);
+        ], { windowsHide: true });
 
         return result.status === 0;
     } else {
         const record = '@reboot ' + command + ' ' + args;
 
-        const result = child.spawnSync('crontab', ['-l']);
+        const result = child.spawnSync('crontab', ['-l'], { windowsHide: true });
         if (result.status !== 0) {
             throw new Error(result.stderr.toString());
         }
@@ -500,7 +501,7 @@ export function assignAutostart(command: string, args: string) {
     } else {
         const record = '@reboot ' + command + ' ' + args;
 
-        const list = child.spawnSync('crontab', ['-l']);
+        const list = child.spawnSync('crontab', ['-l'], { windowsHide: true });
         if (list.status !== 0) {
             throw new Error(list.stderr.toString());
         }
@@ -512,7 +513,7 @@ export function assignAutostart(command: string, args: string) {
             }
         }
 
-        const opts: child.SpawnSyncOptions = { input: record + '\n' + data };
+        const opts: child.SpawnSyncOptions = { input: record + '\n' + data, windowsHide: true  };
         const edit = child.spawnSync('crontab', opts);
         if (edit.status !== 0) {
             throw new Error(edit.stderr.toString());
@@ -536,14 +537,14 @@ export function revokeAutostart(command: string, args: string) {
     } else {
         const record = '@reboot ' + command + ' ' + args;
 
-        let list = child.spawnSync('crontab', ['-l']);
+        let list = child.spawnSync('crontab', ['-l'], { windowsHide: true });
         if (list.status !== 0) {
             throw new Error(list.stderr.toString());
         }
 
         const data = list.stdout.toString().split('\n').filter(line => line !== record);
 
-        const opts: child.SpawnSyncOptions = { input: data.join('\n') };
+        const opts: child.SpawnSyncOptions = { input: data.join('\n'), windowsHide: true };
         const edit = child.spawnSync('crontab', opts);
         if (edit.status !== 0) {
             throw new Error(edit.stderr.toString());

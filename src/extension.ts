@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { ServiceStatus, WebpierService, WebpierDataProvider } from './webpierDataProvider';
 import { WebpierServiceEditor } from './webpierServiceEditor';
 import { WebpierContextEditor } from './webpierContextEditor';
+import { Handle, Status, Health, Tunnel, Report, Slipway } from './slipwayClient';
 import * as webpier from './webpierContext';
 import * as os from 'os';
 import * as fs from 'fs';
@@ -28,6 +29,7 @@ export async function activate(vsc: vscode.ExtensionContext) {
 
 	home = path.normalize(home);
 	const wpc = new webpier.Context(home);
+	const slipway = new Slipway();
 
 	const imports = new WebpierDataProvider(vsc, wpc, true);
 	const exports = new WebpierDataProvider(vsc, wpc, false);
@@ -40,6 +42,7 @@ export async function activate(vsc: vscode.ExtensionContext) {
 			await wpc.load();
 			imports.rebuild();
 			exports.rebuild();
+			await slipway.launch(home);
 			vscode.commands.executeCommand('setContext', 'context.uploaded', true);
 		} catch (error) {
 			vscode.window.showInformationMessage(`Could not load webpier context: ${error}`);
@@ -122,6 +125,7 @@ export async function activate(vsc: vscode.ExtensionContext) {
 				await wpc.init(owner + '/' + pier);
 				imports.rebuild();
 				exports.rebuild();
+				await slipway.launch(home);
 				vscode.commands.executeCommand('setContext', 'context.uploaded', true);
 				vscode.commands.executeCommand('setContext', 'context.edit', 'context');
 			} catch (error) {
