@@ -1,12 +1,16 @@
 import * as vscode from 'vscode';
 import * as utils from './utils';
 import * as webpier from './webpierContext';
-import { WebpierDataProvider } from './webpierDataProvider';
 
 export class WebpierContextEditor implements vscode.WebviewViewProvider {
     private view?: vscode.WebviewView;
+    private config: webpier.Config = new webpier.Config();
+    private autostart: boolean = false;
+    private callback?: (config: webpier.Config) => void;
+    private command: string = '';
+    private args: string = '';
 
-    constructor(private readonly extensionUri: vscode.Uri, private readonly wpc: webpier.Context, private readonly imports: WebpierDataProvider, private readonly exports: WebpierDataProvider) {}
+    constructor(private readonly extensionUri: vscode.Uri) {}
 
     public resolveWebviewView(webviewView: vscode.WebviewView, context: vscode.WebviewViewResolveContext, token: vscode.CancellationToken) {
         this.view = webviewView;
@@ -31,35 +35,29 @@ export class WebpierContextEditor implements vscode.WebviewViewProvider {
         });
     }
 
+    public setup(home: string, config: webpier.Config, callback: (config: webpier.Config) => void) {
+        this.config = config;
+        this.command = webpier.getModulePath('slipway');
+        this.args = `"${home}" daemon`;
+        this.autostart = webpier.verifyAutostart(this.command, this.args);
+        this.callback = callback;
+    }
+
     private async handleFormSubmit(context: any) {
-        try {
-            const pier = this.wpc.getPier();
-            const command = webpier.getModulePath('slipway');
-            const args = `"${this.wpc.home}" daemon`;
-            const autostart = webpier.verifyAutostart(command, args);
-
-            await this.wpc.setConfig(context.pier, context.nat, context.dht, context.email);
-            if (context.pier !== pier) {
-                this.imports.rebuild();
-                this.exports.rebuild();
-                this.imports.refresh();
-                this.exports.refresh();
-                webpier.revokeAutostart(command, args);
-            }
-
-            if (context.pier !== pier || context.autostart !== autostart) {
-                if (context.autostart) {
-                    webpier.assignAutostart(command, `"${this.wpc.home}" daemon`);
-                } else {
-                    webpier.revokeAutostart(command, `"${this.wpc.home}" daemon`);
+        if(this.callback) {
+            try {
+                if (this.autostart !== context.autostart) {
+                    if (context.autostart) {
+                        webpier.assignAutostart(this.command, this.args);
+                    } else {
+                        webpier.revokeAutostart(this.command, this.args);
+                    }
                 }
+            } catch (error) {
+                utils.onError(`Could update daemon state: ${error}`);
             }
 
-            vscode.commands.executeCommand('setContext', 'context.edit', null);
-        } catch (error) {
-            vscode.window.showWarningMessage(`Could not change some parameters of the context: ${error}`);
-            vscode.commands.executeCommand('setContext', 'context.edit', null);
-            vscode.commands.executeCommand('setContext', 'context.edit', 'context');
+            this.callback(context);
         }
     }
 
@@ -68,9 +66,6 @@ export class WebpierContextEditor implements vscode.WebviewViewProvider {
         const stylesUri = webview.asWebviewUri(vscode.Uri.joinPath(this.extensionUri, 'media', 'styles.css'));
 
         const nonce = utils.getNonce();
-        const config = this.wpc.getConfig();
-        const autostart = webpier.verifyAutostart(webpier.getModulePath('slipway'), `"${this.wpc.home}" daemon`);
-
         return `<!DOCTYPE html>
                 <html lang="en">
                 <head>
@@ -87,15 +82,15 @@ export class WebpierContextEditor implements vscode.WebviewViewProvider {
                             <table>
                                 <tr>
                                     <td><span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><label for="owner">Owner</label></td>
-                                    <td><input type="text" id="owner" name="owner" placeholder="Enter Owner ID" value="${utils.prefix(config.pier, '/')}"></td>
+                                    <td><input type="text" id="owner" name="owner" placeholder="Enter Owner ID" value="${utils.prefix(this.config.pier, '/')}"></td>
                                 </tr>
                                 <tr>
                                     <td><span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><label for="pier">Pier</label></td>
-                                    <td><input type="text" id="pier" name="pier" placeholder="Enter Pier ID" value="${utils.postfix(config.pier, '/')}"></td>
+                                    <td><input type="text" id="pier" name="pier" placeholder="Enter Pier ID" value="${utils.postfix(this.config.pier, '/')}"></td>
                                 </tr>
                                 <tr>
                                     <td><span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><label for="autostart">Autostart</label></td>
-                                    <td><input type="checkbox" id="autostart" name="autostart" ${autostart ? 'checked' : ''}></td>
+                                    <td><input type="checkbox" id="autostart" name="autostart" ${this.autostart ? 'checked' : ''}></td>
                                 </tr>
                             </table>
                         </details>
@@ -104,11 +99,11 @@ export class WebpierContextEditor implements vscode.WebviewViewProvider {
                             <table>
                                 <tr>
                                     <td><span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><label for="stun">STUN server</label></td>
-                                    <td><input type="text" id="stun" name="stun" placeholder="Enter STUN server" value="${config.nat.stun}"></td>
+                                    <td><input type="text" id="stun" name="stun" placeholder="Enter STUN server" value="${this.config.nat.stun}"></td>
                                 </tr>
                                 <tr>
                                     <td><span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><label for="hops">Punch hops</label></td>
-                                    <td><input type="text" id="hops" name="hops" placeholder="Enter max packet TTL to punch NAT" value="${config.nat.hops}"></td>
+                                    <td><input type="text" id="hops" name="hops" placeholder="Enter max packet TTL to punch NAT" value="${this.config.nat.hops}"></td>
                                 </tr>
                             </table>
                         </details>
@@ -117,11 +112,11 @@ export class WebpierContextEditor implements vscode.WebviewViewProvider {
                             <table>
                                 <tr>
                                     <td><span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><label for="bootstrap">Bootstrap</label></td>
-                                    <td><input type="text" id="bootstrap" name="bootstrap" placeholder="Enter DHT bootstrap url" value="${config.dht.bootstrap}"></td>
+                                    <td><input type="text" id="bootstrap" name="bootstrap" placeholder="Enter DHT bootstrap url" value="${this.config.dht.bootstrap}"></td>
                                 </tr>
                                 <tr>
                                     <td><span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><label for="port">Port</label></td>
-                                    <td><input type="text" id="port" name="port" placeholder="Enter DHT node port" value="${config.dht.port}"></td>
+                                    <td><input type="text" id="port" name="port" placeholder="Enter DHT node port" value="${this.config.dht.port}"></td>
                                 </tr>
                             </table>
                         </details>
@@ -130,31 +125,31 @@ export class WebpierContextEditor implements vscode.WebviewViewProvider {
                             <table>
                                 <tr>
                                     <td><span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><label for="smtp">SMTP</label></td>
-                                    <td><input type="text" id="smtp" name="smtp" placeholder="Enter SMTP server" value="${config.email.smtp}"></td>
+                                    <td><input type="text" id="smtp" name="smtp" placeholder="Enter SMTP server" value="${this.config.email.smtp}"></td>
                                 </tr>
                                 <tr>
                                     <td><span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><label for="imap">IMAP</label></td>
-                                    <td><input type="text" id="imap" name="imap" placeholder="Enter IMAP server" value="${config.email.imap}"></td>
+                                    <td><input type="text" id="imap" name="imap" placeholder="Enter IMAP server" value="${this.config.email.imap}"></td>
                                 </tr>
                                 <tr>
                                     <td><span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><label for="login">Login</label></td>
-                                    <td><input type="text" id="login" name="login" placeholder="Enter Email login" value="${config.email.login}"></td>
+                                    <td><input type="text" id="login" name="login" placeholder="Enter Email login" value="${this.config.email.login}"></td>
                                 </tr>
                                 <tr>
                                     <td><span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><label for="password">Password</label></td>
-                                    <td><input type="password" id="password" name="password" placeholder="Enter Email password" value="${config.email.password}"></td>
+                                    <td><input type="password" id="password" name="password" placeholder="Enter Email password" value="${this.config.email.password}"></td>
                                 </tr>
                                 <tr>
                                     <td><span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><label for="cert">Certificate</label></td>
-                                    <td><input type="file" id="cert" name="cert" value="${config.email.cert}"></td>
+                                    <td><input type="file" id="cert" name="cert" value="${this.config.email.cert}"></td>
                                 </tr>
                                 <tr>
                                     <td><span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><label for="key">Key</label></td>
-                                    <td><input type="file" id="key" name="key" value="${config.email.key}"></td>
+                                    <td><input type="file" id="key" name="key" value="${this.config.email.key}"></td>
                                 </tr>
                                 <tr>
                                     <td><span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><label for="ca">CA</label></td>
-                                    <td><input type="file" id="ca" name="ca" value="${config.email.ca}"></td>
+                                    <td><input type="file" id="ca" name="ca" value="${this.config.email.ca}"></td>
                                 </tr>
                             </table>
                         </details>

@@ -1,13 +1,7 @@
 import * as vscode from 'vscode';
 import * as webpier from './webpierContext';
+import * as slipway from './slipwayClient';
 import * as utils  from './utils';
-
-export enum ServiceStatus {
-    Asleep,
-    Broken,
-    Lonely,
-    Burden
-}
 
 export abstract class WebpierDataItem extends vscode.TreeItem {
     abstract getChildren() : vscode.ProviderResult<WebpierDataItem[]>;
@@ -15,13 +9,12 @@ export abstract class WebpierDataItem extends vscode.TreeItem {
 }
 
 export class WebpierDataProvider implements vscode.TreeDataProvider<WebpierDataItem> {
-    
     private services: Map<string, WebpierService> = new Map<string, WebpierService>();
 
     private _onDidChangeTreeData: vscode.EventEmitter<WebpierDataItem | undefined | null | void> = new vscode.EventEmitter<WebpierDataItem | undefined | null | void>(); 
     readonly onDidChangeTreeData: vscode.Event<WebpierDataItem | undefined | null | void> = this._onDidChangeTreeData.event;
 
-    constructor(private vsc: vscode.ExtensionContext, private wpc: webpier.Context, public readonly remote: boolean) {
+    constructor(private webpierContext: webpier.Context, public readonly remote: boolean) {
     }
 
     getTreeItem(element: WebpierDataItem): vscode.TreeItem {
@@ -42,24 +35,40 @@ export class WebpierDataProvider implements vscode.TreeDataProvider<WebpierDataI
 
     rebuild() : void {
         this.services = new Map<string, WebpierService>();
-        const local = this.wpc.getPier();
-        for(const [pier, services] of this.wpc.getServices()) {
+        const local = this.webpierContext.getPier();
+        for(const [pier, services] of this.webpierContext.getServices()) {
             if (this.remote && pier !== local || !this.remote && pier === local) {
                 for(const service of services) {
                     this.services.set(pier + '/' + service.name, new WebpierService(service.name, service.pier, service.address, this));
-                };
+                }
             }
-        };
+        }
     }
 
-    remove(name: string, pier: string) : void {
-        const key = this.remote ? pier : this.wpc.getPier() + '/' + name;
+    remove(item: WebpierService) : void {
+        const key = this.remote ? item.pier : this.webpierContext.getPier() + '/' + item.name;
         this.services.delete(key);
     }
 
-    insert(name: string, pier: string, address: string) : void {
-        const key = this.remote ? pier : this.wpc.getPier() + '/' + name;
-        this.services.set(key, new WebpierService(name, pier, address, this));
+    insert(item: WebpierService) : void {
+        const key = this.remote ? item.pier : this.webpierContext.getPier() + '/' + item.name;
+        this.services.set(key, item);
+    }
+
+    updateStatus(report: slipway.Report | slipway.Report[]) {
+        if (Array.isArray(report)) {
+            for(const item of report) {
+                const service = this.services.get(item.pier + '/' + item.service);
+                if (service) {
+                    service.setStatus(item.state, item.tunnels);
+                }
+            };
+        } else {
+            const service = this.services.get(report.pier + '/' + report.service);
+            if (service) {
+                service.setStatus(report.state, report.tunnels);
+            }
+        }
     }
 }
 
@@ -80,8 +89,13 @@ export class WebpierNode extends WebpierDataItem {
         this.service.refresh(item ? item : this);
     }
 
-    setStatus(connected: boolean) {
+    setStatus(connected: boolean, pid?: number) {
         this.iconPath = new vscode.ThemeIcon('plug', new vscode.ThemeColor(connected ? 'debugIcon.startForeground' : 'debugIcon.breakpointDisabledForeground'));
+        if (pid) {
+            this.tooltip = this.owner + '/' + this.pier + ' pid=' + pid;
+        } else {
+            this.tooltip = this.owner + '/' + this.pier;
+        }
     }
 }
 
@@ -100,18 +114,18 @@ export class WebpierService extends WebpierDataItem {
         }
     }
 
-    setStatus(status: ServiceStatus, tunnels: string[]) {
-        this.contextValue = 'webpier.' + (status === ServiceStatus.Asleep ? 'asleep' : 'active') + '.service';
+    setStatus(status: slipway.Status, tunnels: slipway.Tunnel[]) {
+        this.contextValue = 'webpier.' + (status === slipway.Status.Asleep ? 'asleep' : 'active') + '.service';
         switch(status) {
-            case ServiceStatus.Broken:
+            case slipway.Status.Broken:
                 this.iconPath = new vscode.ThemeIcon('broadcast', new vscode.ThemeColor('debugIcon.stopForeground'));
                 this.tooltip = 'broken';
                 break;
-            case ServiceStatus.Lonely:
+            case slipway.Status.Lonely:
                 this.iconPath = new vscode.ThemeIcon('broadcast', new vscode.ThemeColor('debugIcon.continueForeground'));
                 this.tooltip = 'lonely';
                 break;
-            case ServiceStatus.Burden:
+            case slipway.Status.Burden:
                 this.iconPath = new vscode.ThemeIcon('broadcast', new vscode.ThemeColor('debugIcon.startForeground'));
                 this.tooltip = 'burden';
                 break;
@@ -121,7 +135,8 @@ export class WebpierService extends WebpierDataItem {
                 break;
         }
         this.nodes.forEach((value, key) => {
-            value.setStatus(tunnels.includes(key));
+            const item = tunnels.find(item => item.pier === key);
+            value.setStatus(item !== undefined, item?.pid);
         });
     }
 
@@ -131,10 +146,5 @@ export class WebpierService extends WebpierDataItem {
 
     refresh(item?: WebpierDataItem) : void {
         this.root.refresh(item ? item : this);
-    }
-
-    remove() : WebpierDataProvider {
-        this.root.remove(this.name, this.pier);
-        return this.root;
     }
 }

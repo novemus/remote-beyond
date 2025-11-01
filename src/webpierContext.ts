@@ -7,30 +7,34 @@ import * as forge from 'node-forge';
 import * as reg from '@vscode/windows-registry';
 import * as utils  from './utils';
 
-class SoftLock {
-    private fd: number = -1;
+export class StaleContext extends Error {
+    public cause: string = 'stale webpier context';
+}
+
+class Locker {
+    private fd: number;
+    private mtime?: Date;
 
     constructor(file: string) {
         this.fd = fs.openSync(file, 'w');
-        ext.flockSync(this.fd, 'sh');
     }
 
-    release() {
-        return ext.flockSync(this.fd, 'un');
-    }
-}
-
-class HardLock {
-    private fd: number = -1;
-
-    constructor(private readonly file: string) {
-        this.fd = fs.openSync(file, 'w');
+    hardLock() {
         ext.flockSync(this.fd, 'ex');
+        if (!this.mtime || fs.fstatSync(this.fd).mtime.toISOString() !== this.mtime.toISOString()) {
+            throw new StaleContext();
+        }
+        this.mtime = new Date();
+        fs.futimesSync(this.fd, this.mtime, this.mtime);
+    }
+
+    softLock() {
+        ext.flockSync(this.fd, 'sh');
+        this.mtime = fs.fstatSync(this.fd).mtime;
     }
 
     release() {
-        fs.utimesSync(this.file, new Date(), new Date());
-        return ext.flockSync(this.fd, 'un');
+        ext.flockSync(this.fd, 'un');
     }
 }
 
@@ -132,9 +136,12 @@ export class Service {
     public autostart: boolean = false;
     public obscure: boolean = true;
 
+    constructor(local: boolean) {
+        this.local = local;
+    }
+
     static parse(object: any) : Service {
-        const result = new Service();
-        result.local = object.local.toString().toLowerCase() === 'true';
+        const result = new Service(object.local.toString().toLowerCase() === 'true');
         result.name = object.name;
         result.pier = object.pier;
         result.address = object.address;
@@ -157,9 +164,10 @@ export class Service {
 export class Context {
     private config: Config = new Config();
     private services: Map<string, Service[]> = new Map<string, Service[]>();
-    private autostart: boolean = false;
+    private locker: Locker;
 
     constructor(public readonly home: string) {
+        this.locker = new Locker(this.home + '/webpier.lock');
     }
 
     public async init(pier: string) {
@@ -169,13 +177,13 @@ export class Context {
         this.services = new Map<string, Service[]>();
 
         if (fs.existsSync(this.config.repo + '/' + pier + '/private.key')) {
-            const lock = new HardLock(this.home + '/webpier.lock');
+            this.locker.hardLock();
             try {
                 await utils.writeJsonFile(this.home + '/webpier.json', this.config);
-                lock.release();
-            } catch (error) {
-                lock.release();
-                throw error;
+                this.locker.release();
+            } catch (err) {
+                this.locker.release();
+                throw err;
             }
             await this.load();
         } else {
@@ -206,22 +214,22 @@ export class Context {
             fs.mkdirSync(this.home, { recursive: true });
             fs.mkdirSync(this.config.log.folder, { recursive: true });
 
-            const lock = new HardLock(this.home + '/webpier.lock');
+            this.locker.hardLock();
             try {
                 await utils.writeJsonFile(this.home + '/webpier.json', this.config);
                 fs.mkdirSync(this.config.repo + '/' + pier, { recursive: true });
                 fs.writeFileSync(this.config.repo + '/' + pier + '/cert.crt', forge.pki.certificateToPem(cert));
                 fs.writeFileSync(this.config.repo + '/' + pier + '/private.key', forge.pki.privateKeyToPem(privateKey));
-                lock.release();
-            } catch (error) {
-                lock.release();
-                throw error;
+                this.locker.release();
+            } catch (err) {
+                this.locker.release();
+                throw err;
             }
         }
     }
 
-    public async load() {
-        const lock = new SoftLock(this.home + '/webpier.lock');
+    public async load() : Promise<void> {
+        this.locker.softLock();
         try {
             this.config = Config.parse(await utils.readJsonFile(this.home + '/webpier.json'));
             this.services.set(this.config.pier, []);
@@ -237,11 +245,27 @@ export class Context {
                     }
                 }
             }
-            lock.release();
-        } catch (error) {
-            lock.release();
-            throw error;
+            this.locker.release();
+        } catch (err) {
+            this.locker.release();
+            throw err;
         }
+    }
+
+    public async refresh() : Promise<boolean> {
+        try {
+            this.locker.hardLock();
+            this.locker.release();
+
+        } catch (err) {
+            this.locker.release();
+            if (err instanceof StaleContext) {
+                await this.load();
+                return true;
+            }
+            throw err;
+        }
+        return false;
     }
 
     public getPier() : string {
@@ -259,13 +283,13 @@ export class Context {
         if (pier !== this.config.pier) {
             await this.init(pier);
         } else {
-            const lock = new HardLock(this.home + '/webpier.lock');
+            this.locker.hardLock();
             try {
                 await utils.writeJsonFile(this.home + '/webpier.json', this.config);
-                lock.release();
-            } catch (error) {
-                lock.release();
-                throw error;
+                this.locker.release();
+            } catch (err) {
+                this.locker.release();
+                throw err;
             }
         }
     }
@@ -291,21 +315,19 @@ export class Context {
     }
 
     public async setService(pier: string, info: Service) {
+        info.local = this.config.pier === pier;
         let services = this.services.get(pier);
         if (services) {
-            let found = services.find((service) => service.name === info.name);
-            if (found) {
-                found = JSON.parse(JSON.stringify(info));
-            } else {
-                services.push(JSON.parse(JSON.stringify(info)));
-            }
-            const lock = new HardLock(this.home + '/webpier.lock');
+            services = services.filter((service) => service.name !== info.name);
+            services.push(info);
+            this.services.set(pier, services);
+            this.locker.hardLock();
             try {
                 await utils.writeJsonFile(this.config.repo + '/' + pier + '/webpier.json', { services });
-                lock.release();
-            } catch (error) {
-                lock.release();
-                throw error;
+                this.locker.release();
+            } catch (err) {
+                this.locker.release();
+                throw err;
             }
         } else {
             throw new Error('Unknown pier');
@@ -317,13 +339,13 @@ export class Context {
         if (services) {
             services = services.filter((service) => service.name !== name);
             this.services.set(pier, services);
-            const lock = new HardLock(this.home + '/webpier.lock');
+            this.locker.hardLock();
             try {
                 await utils.writeJsonFile(this.config.repo + '/' + pier + '/webpier.json', { services });
-                lock.release();
-            } catch (error) {
-                lock.release();
-                throw error;
+                this.locker.release();
+            } catch (err) {
+                this.locker.release();
+                throw err;
             }
         }
     }
@@ -341,14 +363,14 @@ export class Context {
     public setRemote(pier: string, cert: string) {
         const dir = this.config.repo + '/' + pier;
         if (pier !== this.config.pier && !fs.existsSync(dir)) {
-            const lock = new HardLock(this.home + '/webpier.lock');
+            this.locker.hardLock();
             try {
                 fs.mkdirSync(dir, { recursive: true });
                 fs.writeFileSync(dir + '/cert.crt', cert);
-                lock.release();
-            } catch (error) {
-                lock.release();
-                throw error;
+                this.locker.release();
+            } catch (err) {
+                this.locker.release();
+                throw err;
             }
         } else {
             throw new Error('Wrong pier');
@@ -361,13 +383,13 @@ export class Context {
         }
         const dir = this.config.repo + '/' + pier;
         if (fs.existsSync(dir)) {
-            const lock = new HardLock(this.home + '/webpier.lock');
+            this.locker.hardLock();
             try {
                 fs.rmSync(dir, { recursive: true, force: true });
-                lock.release();
-            } catch (error) {
-                lock.release();
-                throw error;
+                this.locker.release();
+            } catch (err) {
+                this.locker.release();
+                throw err;
             }
         }
     }

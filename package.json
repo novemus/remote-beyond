@@ -103,14 +103,14 @@
           "id": "webpierStartup",
           "name": "Startup",
           "icon": "ports-open-browser-icon",
-          "when": "!context.uploaded"
+          "when": "!context.init"
         },
         {
           "type": "webview",
           "id": "webpierServiceEditor",
           "name": "Editor",
           "icon": "wrench",
-          "when": "context.edit === 'import' || context.edit === 'export'"
+          "when": "context.edit === 'service'"
         },
         {
           "type": "webview",
@@ -123,13 +123,13 @@
           "id": "webpierImport",
           "name": "Import",
           "icon": "ports-open-browser-icon",
-          "when": "context.uploaded"
+          "when": "context.init"
         },
         {
           "id": "webpierExport",
           "name": "Export",
           "icon": "ports-open-browser-icon",
-          "when": "context.uploaded"
+          "when": "context.init"
         }
       ]
     },

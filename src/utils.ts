@@ -2,6 +2,11 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs/promises';
 
+export function onError(info: string) {
+    vscode.window.showErrorMessage(info);
+    console.error(info);
+}
+
 export async function readJsonFile(file: string): Promise<any> {
     let uri : vscode.Uri;
     if (!path.isAbsolute(file)) {
@@ -117,4 +122,28 @@ export function murmurHash(str: string, seed: bigint = 0xc70f6907n): bigint {
     h ^= h >> BigInt(r);
 
     return h;
+}
+
+export class Timer {
+    private timeout?: NodeJS.Timeout;
+
+    constructor(private readonly delay: number, private readonly interval: number) {
+    }
+
+    start(callback: () => void) {
+        const timer = this;
+        timer.stop();
+        timer.timeout = setTimeout(() => {
+            callback();
+            timer.timeout = setInterval(() => {
+                callback();
+            }, timer.interval);
+        }, timer.delay);
+    }
+
+    stop() {
+        if (this.timeout) {
+            clearTimeout(this.timeout);
+        }
+    }
 }

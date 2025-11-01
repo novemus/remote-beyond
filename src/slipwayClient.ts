@@ -6,22 +6,17 @@ import * as utils  from './utils';
 import * as webpier from './webpierContext';
 
 export class Handle {
-    public pier: string = '';
-    public service: string = '';
-
-    constructor(data: any) {
-        this.pier = data.pier;
-        this.service = data.service;
+    constructor(public readonly pier: string, public readonly service: string) {
     }
 
     static parseOne(data: any) : Handle {
-        return new Handle(data);
+        return new Handle(data.pier, data.service);
     }
 
     static parseArray(data: any) : Handle[] {
         const arr: Handle[] = [];
         for (const item of data) {
-            arr.push(new Handle(item));
+            arr.push(new Handle(item.pier, item.service));
         }
         return arr;
     }
@@ -34,69 +29,54 @@ export enum Status {
     Burden
 };
 
-export class Health extends Handle {
-    public state: Status = Status.Asleep;
-    public message: string = '';
-
-    constructor(data: any) {
-        super(data);
-        this.state = parseInt(data.state) as Status;
-        this.message = data.message;
+export class Health {
+    constructor(public readonly pier: string, public readonly service: string, public readonly state: Status, public readonly message: string) {
     }
 
     static parseOne(data: any) : Health {
-        return new Health(data);
+        return new Health(data.pier, data.service, parseInt(data.state) as Status, data.message);
     }
 
     static parseArray(data: any) : Health[] {
         const arr: Health[] = [];
         for (const item of data) {
-            arr.push(new Health(item));
+            arr.push(new Health(item.pier, item.service, parseInt(item.state) as Status, item.messageem));
         }
         return arr;
     }
 }
 
 export class Tunnel {
-    public pier: string = '';
-    public pid: number = 0;
-
-    constructor(data: any) {
-        this.pier = data.pier;
-        this.pid = parseInt(data.pid);
+    constructor(public readonly pier: string, public readonly pid: number) {
     }
 
     static parseOne(data: any) : Tunnel {
-        return new Tunnel(data);
+        return new Tunnel(data.pier, parseInt(data.pid));
     }
 
     static parseArray(data: any) : Tunnel[] {
         const arr: Tunnel[] = [];
         for (const item of data) {
-            arr.push(new Tunnel(item));
+            arr.push(new Tunnel(item.pier, parseInt(item.pid)));
         }
         return arr;
     }
 }
 
-export class Report extends Health {
-	public tunnels: Tunnel[] = [];
-
-    constructor(data: any) {
-        super(data);
-        if (Array.isArray(data.tunnels)) {
-            this.tunnels = Tunnel.parseArray(data.tunnels);
-        }
+export class Report {
+    constructor(public readonly pier: string, public readonly service: string, public readonly state: Status, public readonly message: string, public readonly tunnels: Tunnel[]) {
     }
 
     static parseOne(data: any) : Report {
-        return new Report(data);
+        return new Report(
+            data.pier, data.service, parseInt(data.state) as Status, data.message, Array.isArray(data.tunnels) ? Tunnel.parseArray(data.tunnels) : []
+        );
     }
 
     static parseArray(data: any) : Report[] {
         const arr: Report[] = [];
         for (const item of data) {
-            arr.push(new Report(item));
+            arr.push(new Report(item.pier, item.service, parseInt(item.state) as Status, item.message, Array.isArray(item.tunnels) ? Tunnel.parseArray(item.tunnels) : []));
         }
         return arr;
     }
@@ -144,13 +124,17 @@ class Message {
         } else if (info.report) {
             return new Message(parseInt(info.action) as Command, Array.isArray(info.report) ? Report.parseArray(info.report) : Report.parseOne(info.report));
         }
-        return new Message(parseInt(info.action) as Command, 'unknown message');
+        return new Message(parseInt(info.action) as Command);
     }
 };
 
 export class Slipway {
     private socket: string = '';
     private client?: net.Socket;
+
+    constructor(private readonly home: string) {
+        this.socket = path.join(os.tmpdir(), os.platform() === 'win32' ? utils.fnv1aHash(home).toString() : utils.murmurHash(home).toString(), 'slipway.jack');
+    }
 
     private async createClient(): Promise<net.Socket> {
         return new Promise((resolve, reject) => {
@@ -195,18 +179,20 @@ export class Slipway {
         return message.payload;
     }
 
-    public async launch(home: string) {
-        this.socket = path.join(os.tmpdir(), os.platform() === 'win32' ? utils.fnv1aHash(home).toString() : utils.murmurHash(home).toString(), 'slipway.jack');
+    public async launch() {
+        if (this.client) {
+            await this.adjustAll();
+        } else {
+            const slipway = webpier.getModulePath('slipway');
+            const server = child.spawn(slipway, [this.home], {
+                detached: true,
+                stdio: 'ignore',
+                windowsHide: true
+            });
 
-        const slipway = webpier.getModulePath('slipway');
-        const server = child.spawn(slipway, [home], {
-            detached: true,
-            stdio: 'ignore',
-            windowsHide: true
-        });
-
-        console.log(`Spawned server with pid: ${server.pid}`);
-        server.unref();
+            console.log(`Spawned server with pid: ${server.pid}`);
+            server.unref();
+        }
     }
 
     public async unplugAll() : Promise<void> {

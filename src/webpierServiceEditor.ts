@@ -1,18 +1,18 @@
 import * as vscode from 'vscode';
 import * as utils from './utils';
 import * as webpier from './webpierContext';
-import { WebpierDataProvider } from './webpierDataProvider';
 
 export class WebpierServiceEditor implements vscode.WebviewViewProvider {
     private view?: vscode.WebviewView;
-    private tree?: WebpierDataProvider;
+    private callback?: (service: webpier.Service) => void;
     private service?: webpier.Service;
+    private remotes: string[] = [];
 
-    constructor(private readonly extensionUri: vscode.Uri, private readonly wpc: webpier.Context) {}
+    constructor(private readonly extensionUri: vscode.Uri) {}
 
     public resolveWebviewView(webviewView: vscode.WebviewView, context: vscode.WebviewViewResolveContext, token: vscode.CancellationToken) {
         this.view = webviewView;
-        this.view.description = this.tree?.remote ? 'IMPORT' : 'EXPORT';
+        this.view.description =  this.service?.local ? 'EXPORT' : 'IMPORT';
 
         webviewView.webview.options = {
             enableScripts: true,
@@ -33,54 +33,40 @@ export class WebpierServiceEditor implements vscode.WebviewViewProvider {
         });
     }
 
-    public update(service: webpier.Service, tree: WebpierDataProvider) {
+    public setup(service: webpier.Service, remotes: string[], callback: (service: webpier.Service) => void) {
         this.service = service;
-        this.tree = tree;
+        this.remotes = remotes;
+        this.callback = callback;
     }
 
     private async handleFormSubmit(service: webpier.Service) {
-        if (this.tree && this.service) {
-            try {
-                const pier = this.wpc.getPier();
-                if (this.service.name !== '') {
-                    await this.wpc.delService(this.tree.remote ? this.service.pier : pier, this.service.name);
-                    this.tree.remove(this.service.name, this.service.pier);
-                }
-                service.local = this.tree.remote === false;
-                await this.wpc.setService(this.tree.remote ? service.pier : pier, service);
-                this.tree.insert(service.name, service.pier, service.address);
-                this.tree.refresh();
-                vscode.commands.executeCommand('setContext', 'context.edit', null);
-            } catch (error) {
-                vscode.window.showWarningMessage(`Could not change service parameters: ${error}`);
-                vscode.commands.executeCommand('setContext', 'context.edit', null);
-                vscode.commands.executeCommand('setContext', 'context.edit', this.tree.remote ? 'import' : 'export');
-            }
+        if (this.callback) {
+            this.callback(service);
         }
     }
 
     private makePierSelector() {
         let selector = '';
-        if (this.tree?.remote) {
-            selector = `<select id="single-pier" name="pier">`;
-            for(const pier of this.wpc.getRemotes()) {
-                selector += `<option value="${pier}" ${this.service?.pier === pier ? 'selected' : ''}>${pier}</option>`;
-            }
-            selector += `</select>`;
-        } else {
+        if (this.service?.local) {
             selector = `<div class="dropdown" name="pier">
                             <button id="multi-pier" class="multi-selector" value="${this.service?.pier}">
                                 ${this.service?.pier.length === 0 ? '&nbsp;' : this.service?.pier }
                             </button>
                             <div id="dropdown-content" class="dropdown-content">`;
             const selected = this.service?.pier.split(' ');
-            for(const pier of this.wpc.getRemotes()) {
+            for(const pier of this.remotes) {
                 selector += `<label>
                                 <input type="checkbox" value="${pier}" ${selected?.find((item) => item === pier) ? 'checked' : ''}>
                                 <span class="dropdown-label">${pier}</span>
                             </label>`;
             }
             selector += `</div></div>`;
+        } else {
+            selector = `<select id="single-pier" name="pier">`;
+            for(const pier of this.remotes) {
+                selector += `<option value="${pier}" ${this.service?.pier === pier ? 'selected' : ''}>${pier}</option>`;
+            }
+            selector += `</select>`;
         }
         return selector;
     }
