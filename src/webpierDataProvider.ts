@@ -5,6 +5,7 @@ import * as utils  from './utils';
 
 export abstract class WebpierDataItem extends vscode.TreeItem {
     abstract getChildren() : vscode.ProviderResult<WebpierDataItem[]>;
+    abstract getParent() : vscode.ProviderResult<WebpierDataItem>;
     abstract refresh(item?: WebpierDataItem) : void;
 }
 
@@ -29,6 +30,10 @@ export class WebpierDataProvider implements vscode.TreeDataProvider<WebpierDataI
         return Promise.resolve([...this.services.values()]);
     }
 
+    getParent(element: WebpierDataItem): vscode.ProviderResult<WebpierDataItem> {
+        return element.getParent();
+    }
+
     refresh(item?: WebpierDataItem): void {
         this._onDidChangeTreeData.fire(item);
     }
@@ -46,13 +51,13 @@ export class WebpierDataProvider implements vscode.TreeDataProvider<WebpierDataI
     }
 
     remove(item: WebpierService) : void {
-        const key = this.remote ? item.pier : this.webpierContext.getPier() + '/' + item.name;
-        this.services.delete(key);
+        const pier = this.remote ? item.pier : this.webpierContext.getPier();
+        this.services.delete(pier + '/' + item.name);
     }
 
     insert(item: WebpierService) : void {
-        const key = this.remote ? item.pier : this.webpierContext.getPier() + '/' + item.name;
-        this.services.set(key, item);
+        const pier = this.remote ? item.pier : this.webpierContext.getPier();
+        this.services.set(pier + '/' + item.name, item);
     }
 
     updateStatus(report: slipway.Report | slipway.Report[]) {
@@ -83,6 +88,10 @@ export class WebpierNode extends WebpierDataItem {
 
     getChildren() : vscode.ProviderResult<WebpierDataItem[]> {
         return Promise.resolve([]);
+    }
+
+    getParent() : vscode.ProviderResult<WebpierDataItem> {
+        return this.service;
     }
 
     refresh(item?: WebpierDataItem) : void {
@@ -142,6 +151,10 @@ export class WebpierService extends WebpierDataItem {
 
     getChildren() : vscode.ProviderResult<WebpierDataItem[]> {
         return Promise.resolve([...this.nodes.values()]);
+    }
+
+    getParent() : vscode.ProviderResult<WebpierDataItem> {
+        return null;
     }
 
     refresh(item?: WebpierDataItem) : void {

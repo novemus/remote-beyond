@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { WebpierService, WebpierDataProvider } from './webpierDataProvider';
+import { WebpierDataItem, WebpierService, WebpierDataProvider } from './webpierDataProvider';
 import { WebpierServiceEditor } from './webpierServiceEditor';
 import { WebpierContextEditor } from './webpierContextEditor';
 import * as slipway from './slipwayClient';
@@ -9,37 +9,41 @@ import * as os from 'os';
 import * as fs from 'fs';
 import * as path from 'path';
 
+function getHome() : string {
+	const config = vscode.workspace.getConfiguration('remote-beyond');
+	let home = config.get<string>('webpier.home', '');
+	if (home === '') {
+		if (os.platform() === 'win32') {
+			if (process.env.LOCALAPPDATA) {
+				home = path.join(process.env.LOCALAPPDATA, 'webpier');
+			} else {
+				home = path.join(os.homedir(), 'AppData', 'Local', 'webpier');
+			}
+		}
+		else if (os.platform() === 'darwin') {
+			home = path.join(os.homedir(), 'Local Settings', 'Application Data', 'webpier');
+		} else {
+			home= path.join(os.homedir(), '.webpier');
+		}
+	}
+	return path.normalize(home);
+}
+
 class Controller {
 	private home: string;
 	private webpierContext: webpier.Context;
 	private slipwayClient: slipway.Slipway;
 	private importTree: WebpierDataProvider;
 	private exportTree: WebpierDataProvider;
+	private importView: vscode.TreeView<WebpierDataItem>;
+	private exportView: vscode.TreeView<WebpierDataItem>;
 	private serviceEditor: WebpierServiceEditor;
 	private webpierEditor: WebpierContextEditor;
 	private timer: utils.Timer = new utils.Timer(3000, 15000);
 	private valid: boolean = true;
 
 	constructor(private context: vscode.ExtensionContext) {
-		const config = vscode.workspace.getConfiguration('remote-beyond');
-
-		this.home = config.get<string>('webpier.home', '');
-		if (this.home === '') {
-			if (os.platform() === 'win32') {
-				if (process.env.LOCALAPPDATA) {
-					this.home = path.join(process.env.LOCALAPPDATA, 'webpier');
-				} else {
-					this.home = path.join(os.homedir(), 'AppData', 'Local', 'webpier');
-				}
-			}
-			else if (os.platform() === 'darwin') {
-				this.home = path.join(os.homedir(), 'Local Settings', 'Application Data', 'webpier');
-			} else {
-				this.home = path.join(os.homedir(), '.webpier');
-			}
-		}
-
-		this.home = path.normalize(this.home);
+		this.home = getHome();
 
 		this.webpierContext = new webpier.Context(this.home);
 		this.slipwayClient = new slipway.Slipway(this.home);
@@ -47,11 +51,37 @@ class Controller {
 		this.importTree = new WebpierDataProvider(this.webpierContext, true);
 		this.exportTree = new WebpierDataProvider(this.webpierContext, false);
 
+		this.importView = vscode.window.createTreeView('webpierImport', { treeDataProvider: this.importTree });
+		this.exportView = vscode.window.createTreeView('webpierExport', { treeDataProvider: this.exportTree });
+
 		this.serviceEditor = new WebpierServiceEditor(this.context.extensionUri);
 		this.webpierEditor = new WebpierContextEditor(this.context.extensionUri);
 	}
 
-	async init(pier?: string): Promise<void> {
+	async startup() : Promise<void> {
+		const owner = await vscode.window.showInputBox({
+			value: '',
+			placeHolder: 'Setup the Owner identifier',
+			validateInput: text => {
+				return /^[*/\\<>:|?\s]+$/.test(text) ? 'Don\'t use the following symbols: [*/\\<>:|? ]' : null;
+			}
+		});
+
+		const host = await vscode.window.showInputBox({
+			value: '',
+			placeHolder: 'Setup the Host identifier',
+			validateInput: text => {
+				return /^[*/\\<>:|?\s]+$/.test(text) ? 'Don\'t use the following symbols: [*/\\<>:|? ]' : null;
+			}
+		});
+
+		if (owner && host) {
+			this.initialize(owner + '/' + host);
+		} else {
+			vscode.window.showWarningMessage('You must define the webpier identity!');
+		}
+	}
+	async initialize(pier?: string) : Promise<void> {
 		try {
 			if (pier) {
 				if (!fs.existsSync(this.home)) {
@@ -81,7 +111,7 @@ class Controller {
 		}
 	}
 
-	editContext() {
+	editContext() : void {
 		vscode.commands.executeCommand('setContext', 'context.edit', null);
 
 		try {
@@ -91,7 +121,7 @@ class Controller {
 			const importTree = this.importTree;
 			const exportTree = this.exportTree;
 
-			this.webpierEditor.setup(this.webpierContext.home, this.webpierContext.getConfig(), async (config: webpier.Config) => {
+			this.webpierEditor.setup(this.home, this.webpierContext.getConfig(), async (config: webpier.Config) => {
 				try {
 					await webpierContext.setConfig(config.pier, config.nat, config.dht, config.email);
 					if (config.pier !== pier) {
@@ -119,7 +149,7 @@ class Controller {
 		}
 	}
 
-	editService(unit: WebpierService) {
+	editService(unit: WebpierService) : void {
 		vscode.commands.executeCommand('setContext', 'context.edit', null);
 
 		try {
@@ -127,6 +157,7 @@ class Controller {
 			const stale = this.webpierContext.getService(pier, unit.name);
 			const webpierContext = this.webpierContext;
 			const slipwayClient = this.slipwayClient;
+			const view = unit.root.remote ? this.importView : this.exportView;
 
 			this.serviceEditor.setup(stale, webpierContext.getRemotes(), async (fresh: webpier.Service) => {
 				try {
@@ -149,6 +180,7 @@ class Controller {
 					item.root.insert(item);
 					item.root.refresh();
 
+					view.reveal(item, { expand: true, focus: true });
 					vscode.commands.executeCommand('setContext', 'context.edit', null);
 
 					try {
@@ -170,12 +202,13 @@ class Controller {
 		}
 	}
 
-	createService(local: boolean) {
+	createService(local: boolean) : void {
 		vscode.commands.executeCommand('setContext', 'context.edit', null);
 
 		const webpierContext = this.webpierContext;
 		const slipwayClient = this.slipwayClient;
 		const tree = local ? this.exportTree : this.importTree;
+		const view = local ? this.exportView : this.importView;
 
 		this.serviceEditor.setup(new webpier.Service(local), webpierContext.getRemotes(), async (config: webpier.Service) => {
 			try {
@@ -186,6 +219,7 @@ class Controller {
 				item.root.insert(item);
 				item.root.refresh();
 
+				view.reveal(item, { expand: true, focus: true });
 				vscode.commands.executeCommand('setContext', 'context.edit', null);
 
 				try {
@@ -204,7 +238,7 @@ class Controller {
 		vscode.commands.executeCommand('setContext', 'context.edit', 'service');
 	}
 
-	async startService(item: WebpierService): Promise<void> {
+	async startService(item: WebpierService) : Promise<void> {
 		try {
 			const pier = item.root.remote ? item.pier : this.webpierContext.getPier();
 			await this.slipwayClient.engageService(new slipway.Handle(pier, item.name));
@@ -215,7 +249,7 @@ class Controller {
 		}
 	}
 
-	async stopService(item: WebpierService): Promise<void> {
+	async stopService(item: WebpierService) : Promise<void> {
 		try {
 			const pier = item.root.remote ? item.pier : this.webpierContext.getPier();
 			await this.slipwayClient.unplugService(new slipway.Handle(pier, item.name));
@@ -226,9 +260,16 @@ class Controller {
 		}
 	}
 
-	async deleteService(item: WebpierService): Promise<void> {
+	async deleteService(item: WebpierService) : Promise<void> {
 		try {
 			const pier = item.root.remote ? item.pier : this.webpierContext.getPier();
+			const answer = await vscode.window.showInformationMessage(
+				`Do you want to remove ${item.root.remote ? 'import' : 'export'} service "${item.name}"?`,
+				'Yes', 'No'
+			);
+			if (answer !== 'Yes') {
+				return;
+			}
 			await this.webpierContext.delService(pier, item.name);
 			item.root.remove(item);
 			item.root.refresh();
@@ -242,7 +283,7 @@ class Controller {
 		}
 	}
 
-	async refresh(): Promise<void> {
+	async refresh() : Promise<void> {
 		try {
 			if (await this.webpierContext.refresh()) {
 				this.importTree.rebuild();
@@ -262,36 +303,133 @@ class Controller {
 		}
 	}
 
+	async uploadOffer() : Promise<void> {
+		try {
+			const uri = await vscode.window.showOpenDialog({
+				canSelectFiles: true,
+				title: "Select WebPier offer"
+			});
+
+			if (uri) {
+				const offer = await webpier.loadOffer(uri[0].fsPath);
+				if (offer.pier === this.webpierContext.getPier()) {
+					vscode.window.showErrorMessage(`The pier name is the same as the local pier: ${offer.pier}`);
+					return;
+				}
+
+				const cert = this.webpierContext.getCertificate(offer.pier);
+				if (cert !== offer.certificate) {
+					if (cert !== '') {
+						const answer = await vscode.window.showWarningMessage(
+							'Such a pier exists and has a different certificate. Do you want to replace it and its services?',
+							'Yes', 'No'
+						);
+						if (answer !== 'Yes') {
+							return;
+						}
+						this.webpierContext.delRemote(offer.pier);
+					}
+					this.webpierContext.addRemote(offer.pier, offer.certificate);
+				}
+				for(const service of offer.services) {
+					const address = await vscode.window.showInputBox({
+						title: offer.pier,
+						prompt: `Enter the address for the '${service.name}' service from the '${offer.pier}' pier.`,
+						placeHolder: '127.0.0.1:12345'
+					});
+
+					if (address && address !== '') {
+						const info = new webpier.Service(false);
+						info.name = service.name;
+						info.pier = offer.pier;
+						info.address = address;
+						info.obscure = service.obscure;
+						info.rendezvous = service.rendezvous;
+
+						await this.webpierContext.setService(offer.pier, info);
+
+						const item = new WebpierService(info.name, info.pier, info.address, this.importTree);
+						this.importTree.insert(item);
+						this.importTree.refresh();
+						this.importView.reveal(item, { expand: true, focus: false });
+					}
+				}
+			}
+		} catch (err) {
+			utils.onError(`Could not refresh webpier context: ${err}`);
+		}
+	}
+
+	async createOffer() : Promise<void> {
+		try {
+			const pier = this.webpierContext.getPier();
+			const services = this.webpierContext.getPierServices(this.webpierContext.getPier());
+			const choice: vscode.QuickPickItem[] = [];
+			services.forEach(service => {
+				choice.push({
+					label: service.name,
+					description: service.address,
+					detail: service.rendezvous
+				});
+			});
+			const selects = await vscode.window.showQuickPick(choice, {
+				title: pier,
+				placeHolder: 'Select services to export',
+				canPickMany: true
+			});
+
+			if (selects) {
+				const uri = await vscode.window.showSaveDialog({
+					title: "Save WebPier offer"
+				});
+				if(uri) {
+					const offer = new webpier.Offer();
+					offer.pier = pier;
+					offer.certificate = this.webpierContext.getCertificate(pier);
+					selects.forEach(item => {
+						const service = services.find(service => service.name === item.label);
+						if (service) {
+							offer.services.push({
+								name: service.name,
+								obscure: service.obscure,
+								rendezvous: service.rendezvous
+							});
+						}
+					});
+					await webpier.saveOffer(uri.fsPath, offer);
+				}
+			}
+		} catch (err) {
+			utils.onError(`Could not refresh webpier context: ${err}`);
+		}
+	}
+
 	async activate(): Promise<void> {
-		await this.init();
-
 		const controller = this;
-
-		vscode.window.createTreeView('webpierImport', { treeDataProvider: this.importTree });
-		vscode.window.createTreeView('webpierExport', { treeDataProvider: this.exportTree });
+		await controller.initialize();
 
 		this.context.subscriptions.push(
-			vscode.window.registerWebviewViewProvider('webpierServiceEditor', this.serviceEditor)
+			vscode.window.registerWebviewViewProvider('webpierServiceEditor', controller.serviceEditor)
 		);
 
 		this.context.subscriptions.push(
-			vscode.window.registerWebviewViewProvider('webpierContextEditor', this.webpierEditor)
+			vscode.window.registerWebviewViewProvider('webpierContextEditor', controller.webpierEditor)
 		);
 
-		this.context.subscriptions.push(vscode.commands.registerCommand('remote-beyond.startService', (service: WebpierService) => {
-			controller.startService(service);
+		this.context.subscriptions.push(vscode.commands.registerCommand('remote-beyond.startService', async (service: WebpierService) => {
+			await controller.startService(service);
 		}));
 
-		this.context.subscriptions.push(vscode.commands.registerCommand('remote-beyond.stopService', (service: WebpierService) => {
-			controller.stopService(service);
+		this.context.subscriptions.push(vscode.commands.registerCommand('remote-beyond.stopService', async (service: WebpierService) => {
+			await controller.stopService(service);
+		}));
+
+		this.context.subscriptions.push(vscode.commands.registerCommand('remote-beyond.delService', async (service: WebpierService) => {
+			await controller.deleteService(service);
 		}));
 
 		this.context.subscriptions.push(vscode.commands.registerCommand('remote-beyond.openServiceEditor', (service: WebpierService) => {
 			controller.editService(service);
-		}));
-
-		this.context.subscriptions.push(vscode.commands.registerCommand('remote-beyond.delService', (service: WebpierService) => {
-			controller.deleteService(service);
 		}));
 
 		this.context.subscriptions.push(vscode.commands.registerCommand('remote-beyond.addImportService', () => {
@@ -311,71 +449,33 @@ class Controller {
 		}));
 
 		this.context.subscriptions.push(vscode.commands.registerCommand('remote-beyond.startup', async () => {
-			const owner = await vscode.window.showInputBox({
-				value: '',
-				placeHolder: 'Setup the Owner identifier',
-				validateInput: text => {
-					return /^[*/\\<>:|?\s]+$/.test(text) ? 'Don\'t use the following symbols: [*/\\<>:|? ]' : null;
-				}
-			});
-
-			const host = await vscode.window.showInputBox({
-				value: '',
-				placeHolder: 'Setup the Host identifier',
-				validateInput: text => {
-					return /^[*/\\<>:|?\s]+$/.test(text) ? 'Don\'t use the following symbols: [*/\\<>:|? ]' : null;
-				}
-			});
-
-			if (owner && host) {
-				controller.init(owner + '/' + host);
-			} else {
-				vscode.window.showWarningMessage('You must define the webpier identity!');
-			}
+			await controller.startup();
 		}));
 
 		this.context.subscriptions.push(vscode.commands.registerCommand('remote-beyond.uploadOffer', async () => {
-			const uri = await vscode.window.showOpenDialog({
-				canSelectFiles: true,
-				title: "Select the WebPier offer"
-			});
-
-			vscode.window.showInformationMessage(`Offer: ${uri}`);
+			await controller.uploadOffer();
 		}));
 
 		this.context.subscriptions.push(vscode.commands.registerCommand('remote-beyond.createOffer', async () => {
-			const select = await vscode.window.showQuickPick([{ label: 'ssh', description: '127.0.0.1:22', detail: 'Rendezvous: Email' }, { label: 'rdp', description: '127.0.0.1:3389', detail: 'Rendezvous: DHT' }], {
-				title: 'sergey-nine@yandex.ru/antique',
-				placeHolder: 'Select services to export',
-				canPickMany: true
-			});
-
-			vscode.window.showInformationMessage(`Services: ${select}`);
-
-			const uri = await vscode.window.showSaveDialog({
-				title: "Save the WebPier offer"
-			});
-
-			vscode.window.showInformationMessage(`Offer: ${uri}`);
+			await controller.createOffer();
 		}));
 	}
 
 	deactivate() {
 		this.timer.stop();
+		this.context.subscriptions.forEach(item => { item.dispose(); });
 	}
 }
 
-declare global {
-	var controller: Controller | undefined;
-}
+let controller: Controller;
 
 export async function activate(context: vscode.ExtensionContext) {
-	globalThis.controller = new Controller(context);
-	await globalThis.controller.activate();
+	controller = new Controller(context);
+	controller.activate();
 	console.log('Extension "remote-beyond" is now active!');
 }
 
 export function deactivate() {
-	globalThis.controller?.deactivate();
-	globalThis.controller = undefined;
+	controller.deactivate();
+	console.log('Extension "remote-beyond" is now inactive!');
 }

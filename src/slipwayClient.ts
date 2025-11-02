@@ -132,7 +132,7 @@ export class Slipway {
     private socket: string = '';
     private client?: net.Socket;
 
-    constructor(private readonly home: string) {
+    constructor(private home: string) {
         this.socket = path.join(os.tmpdir(), os.platform() === 'win32' ? utils.fnv1aHash(home).toString() : utils.murmurHash(home).toString(), 'slipway.jack');
     }
 

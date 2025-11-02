@@ -159,14 +159,33 @@ export class Service {
         }
         return result;
     }
-};
+}
+
+export class Offer {
+    public pier: string = '';
+    public certificate: string = '';
+    public services: { name: string, obscure: boolean, rendezvous: string }[] = [];
+    static parse(object: any) : Offer {
+        const result = new Offer();
+        result.pier = object.pier;
+        result.certificate = object.certificate;
+        for(const service of object.services) {
+            result.services.push({
+                 name: service.name,
+                 obscure: service.obscure.toString().toLowerCase() === 'true',
+                 rendezvous: service.rendezvous
+            });
+        }
+        return result;
+    }
+}
 
 export class Context {
     private config: Config = new Config();
     private services: Map<string, Service[]> = new Map<string, Service[]>();
     private locker: Locker;
 
-    constructor(public readonly home: string) {
+    constructor(private home: string) {
         this.locker = new Locker(this.home + '/webpier.lock');
     }
 
@@ -302,6 +321,11 @@ export class Context {
         return result;
     }
 
+    public getPierServices(pier: string) : Service[] {
+        const services = this.services.get(pier);
+        return services ? JSON.parse(JSON.stringify(services)) : [];
+    }
+
     public getService(pier: string, name: string) : Service {
         const pool = this.services.get(pier);
         if (pool) {
@@ -360,7 +384,7 @@ export class Context {
         return piers;
     }
 
-    public setRemote(pier: string, cert: string) {
+    public addRemote(pier: string, cert: string) {
         const dir = this.config.repo + '/' + pier;
         if (pier !== this.config.pier && !fs.existsSync(dir)) {
             this.locker.hardLock();
@@ -392,6 +416,14 @@ export class Context {
                 throw err;
             }
         }
+    }
+
+    public getCertificate(pier: string) : string {
+        const path = this.config.repo + '/' + pier + '/cert.crt';
+        if (fs.existsSync(path)) {
+            return fs.readFileSync(this.config.repo + '/' + pier + '/cert.crt', { encoding: 'utf-8' });
+        }
+        return '';
     }
 };
 
@@ -572,4 +604,12 @@ export function revokeAutostart(command: string, args: string) {
             throw new Error(edit.stderr.toString());
         }
     }
+}
+
+export async function loadOffer(path: string) : Promise<Offer> {
+    return Offer.parse(await utils.readJsonFile(path));
+}
+
+export async function saveOffer(path: string, offer: Offer) : Promise<void> {
+    return await utils.writeJsonFile(path, offer);
 }
