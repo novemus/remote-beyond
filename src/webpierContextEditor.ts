@@ -86,7 +86,8 @@ export class WebpierContextEditor implements vscode.WebviewViewProvider {
                     }
                 }
             } catch (error) {
-                utils.onError(`Could update daemon state: ${error}`);
+                utils.onError(`Could not apply 'Autostart' option: ${error}`);
+                return;
             }
 
             this.callback(context);

@@ -86,6 +86,16 @@
         "command": "remote-beyond.openContextEditor",
         "title": "Edit webpier context",
         "icon": "$(gear)"
+      },
+      {
+        "command": "remote-beyond.collapseImportTree",
+        "title": "Collapse import tree view",
+        "icon": "$(collapse-all)"
+      },
+      {
+        "command": "remote-beyond.collapseExportTree",
+        "title": "Collapse export tree view",
+        "icon": "$(collapse-all)"
       }
     ],
     "viewsContainers": {
@@ -161,6 +171,16 @@
         {
           "command": "remote-beyond.openContextEditor",
           "when": "view === webpierExport || view == webpierImport",
+          "group": "navigation"
+        },
+        {
+          "command": "remote-beyond.collapseExportTree",
+          "when": "view === webpierExport",
+          "group": "navigation"
+        },
+        {
+          "command": "remote-beyond.collapseImportTree",
+          "when": "view === webpierImport",
           "group": "navigation"
         }
       ],

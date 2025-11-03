@@ -141,13 +141,13 @@ class Controller {
 						utils.onError(`Could not adjust services: ${err}`);
 					}
 				} catch (err) {
-					utils.onError(`Could not change some parameters of the context: ${err}`);
+					utils.onError(`Could not change the context: ${err}`);
 				}
 			});
 
 			vscode.commands.executeCommand('setContext', 'context.edit', 'context');
 		} catch (err) {
-			utils.onError(`Could init context editor: ${err}`);
+			utils.onError(`Could setup context editor: ${err}`);
 		}
 	}
 
@@ -171,7 +171,7 @@ class Controller {
 						try {
 							await slipwayClient.adjustService(new slipway.Handle(pier, stale.name));
 						} catch (err) {
-							utils.onError(`Could not adjust the service: ${err}`);
+							utils.onError(`Could not unplug the service: ${err}`);
 						}
 					} else {
 						unit.root.remove(unit);
@@ -192,15 +192,15 @@ class Controller {
 						}
 					} catch (err) {
 						item.setStatus(slipway.Status.Broken, []);
-						utils.onError(`Could not adjust the service: ${err}`);
+						utils.onError(`Could not adjust state of the service: ${err}`);
 					}
 				} catch (err) {
-					utils.onError(`Could not change service parameters: ${err}`);
+					utils.onError(`Could not change the service: ${err}`);
 				}
 			});
 			vscode.commands.executeCommand('setContext', 'context.edit', 'service');
 		} catch (err) {
-			utils.onError(`Could init service editor: ${err}`);
+			utils.onError(`Could setup service editor: ${err}`);
 		}
 	}
 
@@ -231,10 +231,10 @@ class Controller {
 					}
 				} catch (err) {
 					item.setStatus(slipway.Status.Broken, []);
-					utils.onError(`Could not adjust the service: ${err}`);
+					utils.onError(`Could not adjust state of the service: ${err}`);
 				}
 			} catch (err) {
-				utils.onError(`Could not change service parameters: ${err}`);
+				utils.onError(`Could not create the service: ${err}`);
 			}
 		});
 		vscode.commands.executeCommand('setContext', 'context.edit', 'service');
@@ -448,6 +448,14 @@ class Controller {
 
 		this.context.subscriptions.push(vscode.commands.registerCommand('remote-beyond.openContextEditor', () => {
 			controller.editContext();
+		}));
+
+		this.context.subscriptions.push(vscode.commands.registerCommand('remote-beyond.collapseImportTree', () => {
+			vscode.commands.executeCommand('workbench.actions.treeView.webpierImport.collapseAll');
+		}));
+
+		this.context.subscriptions.push(vscode.commands.registerCommand('remote-beyond.collapseExportTree', () => {
+			vscode.commands.executeCommand('workbench.actions.treeView.webpierExport.collapseAll');
 		}));
 
 		this.context.subscriptions.push(vscode.commands.registerCommand('remote-beyond.closeEditor', () => {
