@@ -1,9 +1,5 @@
 # Change Log
 
-All notable changes to the "remote-beyond" extension will be documented in this file.
+## 1.0.0 (November 2025)
 
-Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
-
-## [Unreleased]
-
-- Initial release
+- First release.

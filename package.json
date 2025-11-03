@@ -37,65 +37,78 @@
     "commands": [
       {
         "command": "remote-beyond.startup",
-        "title": "Init workspace context..."
+        "title": "Init workspace context...",
+        "category": "Remote - Beyond"
       },
       {
         "command": "remote-beyond.createOffer",
-        "title": "Create an offer..."
+        "title": "Create an offer...",
+        "category": "Remote - Beyond"
       },
       {
         "command": "remote-beyond.uploadOffer",
-        "title": "Upload an offer..."
+        "title": "Upload an offer...",
+        "category": "Remote - Beyond"
       },
       {
         "command": "remote-beyond.startService",
         "title": "Start webpier service",
-        "icon": "$(play-circle)"
+        "icon": "$(play-circle)",
+        "category": "Remote - Beyond"
       },
       {
         "command": "remote-beyond.stopService",
-        "title": "Stop webpier service",
-        "icon": "$(stop-circle)"
+        "title": "Stop service",
+        "icon": "$(stop-circle)",
+        "category": "Remote - Beyond"
       },
       {
         "command": "remote-beyond.addImportService",
-        "title": "Add webpier import service",
-        "icon": "$(new-file)"
+        "title": "Add import service",
+        "icon": "$(new-file)",
+        "category": "Remote - Beyond"
       },
       {
         "command": "remote-beyond.addExportService",
-        "title": "Add webpier export service",
-        "icon": "$(new-file)"
+        "title": "Add export service",
+        "icon": "$(new-file)",
+        "category": "Remote - Beyond"
       },
       {
         "command": "remote-beyond.delService",
-        "title": "Delete webpier service",
-        "icon": "$(notebook-delete-cell)"
+        "title": "Delete service",
+        "icon": "$(notebook-delete-cell)",
+        "category": "Remote - Beyond"
       },
       {
         "command": "remote-beyond.openServiceEditor",
-        "title": "Edit webpier service",
-        "icon": "$(edit)"
+        "title": "Edit service",
+        "icon": "$(edit)",
+        "category": "Remote - Beyond"
       },
       {
         "command": "remote-beyond.closeEditor",
-        "title": "Close service editor",
-        "icon": "$(close)"
+        "title": "Close editor",
+        "icon": "$(close)",
+        "category": "Remote - Beyond"
       },
       {
         "command": "remote-beyond.openContextEditor",
         "title": "Edit webpier context",
-        "icon": "$(gear)"
+        "icon": "$(gear)",
+        "category": "Remote - Beyond"
       },
       {
         "command": "remote-beyond.collapseImportTree",
         "title": "Collapse import tree view",
-        "icon": "$(collapse-all)"
+        "icon": "$(collapse-all)",
+        "category": "Remote - Beyond"
       },
       {
         "command": "remote-beyond.collapseExportTree",
         "title": "Collapse export tree view",
-        "icon": "$(collapse-all)"
+        "icon": "$(collapse-all)",
+        "category": "Remote - Beyond"
       }
     ],
     "viewsContainers": {
@@ -144,6 +157,28 @@
       ]
     },
     "menus": {
+        "commandPalette": [
+        {
+          "command": "remote-beyond.startup",
+          "when": "false"
+        },
+        {
+          "command": "remote-beyond.startService",
+          "when": "false"
+        },
+        {
+          "command": "remote-beyond.stopService",
+          "when": "false"
+        },
+        {
+          "command": "remote-beyond.openServiceEditor",
+          "when": "false"
+        },
+        {
+          "command": "remote-beyond.delService",
+          "when": "false"
+        }
+      ],
       "view/title": [
         {
           "command": "remote-beyond.createOffer",

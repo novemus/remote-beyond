@@ -1,71 +1,59 @@
-# remote-beyond README
+# README
 
-This is the README for your extension "remote-beyond". After writing up a brief description, we recommend including the following sections.
+The `Remote - Beyond` is a [vscode](https://code.visualstudio.com) frontend for the [WebPier](https://github.com/novemus/webpier) application. This is a means to access non-public remote services. For example, if you have a host behind the NAT and would like to use it as Dev machine, but your VPN is not fast enough, you can forward SSH of the remote host directly to the local interface by the `WebPier` with using the `Remote - Beyond`.
 
-## Features
+## How it works
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
-
-For example if there is an image subfolder under your extension project workspace:
-
-\!\[feature X\]\(images/feature-x.png\)
-
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
+The `WebPier` creates a direct UDP tunnel between the hosts and maps the remote TCP service to the local interface, or forwards the local TCP service to the remote side. UDP-hole-punching technique using STUN server is used to overcome NAT, and EMAIL or DHT services are used as a rendezvous for exchanging endpoints. No third-party servers are used to relay traffic and the tunnel is obscured by default. So it's safe. But keep in mind, for successful passage through NAT, it must implement independent policy of mapping enpoints of outcoming connections to a public interface. Fortunately, this is the most common case.
 
 ## Requirements
 
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
+To use the `Remote - Beyond` extension you must install the [WebPier](https://github.com/novemus/webpier) application.
 
-## Extension Settings
+## Using
 
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
+On the first start, you will be prompted to define the local *Pier* identity.
 
-For example:
+![welcome](resources/welcome.png)
 
-This extension contributes the following settings:
+It consists from the two parts. The first one is an *Owner* identifier, which should be your email address if you want to use the EMAIL as the rendezvous service in addition to DHT. The second one is a *Host* identifier which must be unique for the *Owner*. After providing the identifiers, a pair of cryptographic keys will be generated to protect rendezvous communications. The default home directory placed in the user program directory of the `WebPier` application. You can change it in the `vscode` configuration.
 
-* `myExtension.enable`: Enable/disable this extension.
-* `myExtension.thing`: Set to `blah` to do something.
+You may change context settings by the `Remote - Beyond: Edit webpier context` command:
 
-## Known Issues
+![settings](resources/settings.png)
 
-Calling out known issues can help limit users opening duplicate issues against your extension.
+You must specify accessible STUN server, DHT bootstrap server or your email account as a rendezvous. Select *Autostart* option if you want to start `WebPier` as daemon on the system startup.
 
-## Release Notes
+Create one or more export services on the remote machine by the `Remote - Beyond: Add export service` command:
 
-Users appreciate release notes as you update your extension.
+![service](resources/service.png)
 
-### 1.0.0
+* **Service** - the name of the service to refer it in rendezvous
+* **Pier** - list of remote piers to export to or remote pier to import from the service
+* **Address** - IPv4 endpoint of the exporting service or local IPv4 endpoint to import the remote service
+* **Gateway** - local IPv4 endpoint for the UDP tunnel
+* **Autostart** - should the service forwarding be run with the application startup or manually
+* **Obscure** - should the UDP tunnel be obfuscated, must be equal for both sides
+* **Rendezvous** - selector of the preferred rendezvous, must match the remote side
 
-Initial release of ...
+Since you haven't adopted any *Pier* now, leave the *Pier* field empty.
 
-### 1.0.1
+After that you have to create an *offer* for other side. Invoke `Remote - Beyond: Create an offer...` command, select your services you want to offer and save the offer file. The offer will also contain the public key of your *Pier*.
 
-Fixed issue #.
+![share](resources/share.png)
 
-### 1.1.0
+Move the *offer* to your local machine, load it by the `Remote - Beyond: Upload an offer...` command, choose from offered services that you want to import and assign addresses for them.
 
-Added features X, Y, and Z.
+![adopt](resources/adopt.png)
 
----
+Now create a counter *offer* for the remote machine. Move it there and load it. And finally you must specify adopted *Pier* in the configuration of services you want to export. Once you have exchanged offers, you can configure services manually.
 
-## Following extension guidelines
+## Home
 
-Ensure that you've read through the extensions guidelines and follow the best practices for creating your extension.
+Home [page](https://github.com/novemus/remote-beyond) of `Remote - Beyond` extension.
 
-* [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
+Home [page](https://github.com/novemus/webpier) of `WebPier` application.
 
-## Working with Markdown
+## Copyright
 
-You can author your README using Visual Studio Code. Here are some useful editor keyboard shortcuts:
-
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux).
-* Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux).
-* Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets.
-
-## For more information
-
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
-
-**Enjoy!**
+MIT © Novemus
