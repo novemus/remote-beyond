@@ -60,18 +60,20 @@ class Controller {
 
 	async startup() : Promise<void> {
 		const owner = await vscode.window.showInputBox({
-			value: '',
-			placeHolder: 'Setup the Owner identifier',
+			title: 'WebPier identifier',
+			placeHolder: 'Enter the Owner identifier',
+			prompt: 'Assign your email address to be able to employ the Email rendezvous.',
 			validateInput: text => {
-				return /^[*/\\<>:|?\s]+$/.test(text) ? 'Don\'t use the following symbols: [*/\\<>:|? ]' : null;
+				return utils.isValidPeirNamePart(text) ? null : 'Don\'t use the symbols prohibited by file systems and gaps.';
 			}
 		});
 
 		const host = await vscode.window.showInputBox({
-			value: '',
-			placeHolder: 'Setup the Host identifier',
+			title: 'WebPier identifier',
+			placeHolder: 'Enter the Host identifier',
+			prompt: 'The Host identifier must be unique for the Owner.',
 			validateInput: text => {
-				return /^[*/\\<>:|?\s]+$/.test(text) ? 'Don\'t use the following symbols: [*/\\<>:|? ]' : null;
+				return utils.isValidPeirNamePart(text) ? null : 'Don\'t use the symbols prohibited by file systems and gaps.';
 			}
 		});
 
@@ -331,11 +333,15 @@ class Controller {
 					}
 					this.webpierContext.addRemote(offer.pier, offer.certificate);
 				}
+
 				for(const service of offer.services) {
 					const address = await vscode.window.showInputBox({
 						title: offer.pier,
 						prompt: `Enter the address for the '${service.name}' service from the '${offer.pier}' pier.`,
-						placeHolder: '127.0.0.1:12345'
+						placeHolder: '127.0.0.1:12345',
+						validateInput: (text: string) => {
+							return utils.isIPv4Endpoint(text) ? null : 'Enter IP:port pair.';
+						}
 					});
 
 					if (address && address !== '') {

@@ -41,6 +41,14 @@ export class WebpierServiceEditor implements vscode.WebviewViewProvider {
 
     private async handleFormSubmit(service: webpier.Service) {
         if (this.callback) {
+            if(!utils.isIPv4Endpoint(service.address)) {
+                vscode.window.showErrorMessage('Invalid \'Address\' value!');
+                return;
+            }
+            if(!utils.isIPv4Endpoint(service.gateway)) {
+                vscode.window.showErrorMessage('Invalid \'Gateway\' value!');
+                return;
+            }
             this.callback(service);
         }
     }

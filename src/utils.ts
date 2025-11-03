@@ -2,6 +2,42 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs/promises';
 
+const DNS_ENDPOINT_PATTERN = /^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])(\:([1-9][0-9]{0,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5]))?$/;
+const IPv4_ENDPOINT_PATTERN = /^((25[0-5]|(2[0-4]|1\d|[1-9]|)\d)\.?\b){4}\:([1-9][0-9]{0,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])$/;
+const IPv6_ENDPOINT_PATTERN = /^\[((25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])\.(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])\.(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])\.(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])|(([0-9A-Fa-f]{1,4}:){7}[0-9A-Fa-f]{1,4}|([0-9A-Fa-f]{1,4}:){1,7}:|:(:[0-9A-Fa-f]{1,4}){1,7}|([0-9A-Fa-f]{1,4}:){1,6}:[0-9A-Fa-f]{1,4}|([0-9A-Fa-f]{1,4}:){1,5}(:[0-9A-Fa-f]{1,4}){1,2}|([0-9A-Fa-f]{1,4}:){1,4}(:[0-9A-Fa-f]{1,4}){1,3}|([0-9A-Fa-f]{1,4}:){1,3}(:[0-9A-Fa-f]{1,4}){1,4}|([0-9A-Fa-f]{1,4}:){1,2}(:[0-9A-Fa-f]{1,4}){1,5}|[0-9A-Fa-f]{1,4}:(:[0-9A-Fa-f]{1,4}){1,6}|:(:[0-9A-Fa-f]{1,4}){1,6}))\]\:([1-9][0-9]{0,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])$/;
+const PIER_NAME_PART_PATTERN = /^(?!\\.)(?!com[0-9]$)(?!con$)(?!lpt[0-9]$)(?!nul$)(?!prn$)[^\s\\|\\*\?\\:<>\/$"]*[^\\.\\|\\*\\?\\\:<>\/\s$"]+$/;
+
+export function isIPv4Endpoint(text: string) {
+    return IPv4_ENDPOINT_PATTERN.test(text);
+}
+
+export function isIPv6Endpoint(text: string) {
+    return IPv6_ENDPOINT_PATTERN.test(text);
+}
+
+export function isDNSEndpoint(text: string) {
+    return DNS_ENDPOINT_PATTERN.test(text);
+}
+
+export function isNetworkEndpoint(text: string) {
+    return isDNSEndpoint(text) || isIPv4Endpoint(text) || isIPv6Endpoint(text);
+}
+
+export function isNetworkEndpointList(text: string) {
+    const list = text.split(',');
+    return list.length > 1
+        ? list.find(item => !isNetworkEndpoint(item)) === undefined 
+        : text.split(';').find(item => !isNetworkEndpoint(item)) === undefined;
+}
+
+export function isValidPeirNamePart(text: string) {
+    return PIER_NAME_PART_PATTERN.test(text);
+}
+
+export function isValidPeirName(text: string) {
+    return PIER_NAME_PART_PATTERN.test(prefix(text, '/')) && PIER_NAME_PART_PATTERN.test(postfix(text, '/'));
+}
+
 export function onError(info: string) {
     vscode.window.showErrorMessage(info);
     console.error(info);

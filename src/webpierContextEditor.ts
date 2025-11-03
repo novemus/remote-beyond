@@ -45,6 +45,38 @@ export class WebpierContextEditor implements vscode.WebviewViewProvider {
 
     private async handleFormSubmit(context: any) {
         if(this.callback) {
+            if(!utils.isValidPeirNamePart(utils.prefix(context.pier, '/'))) {
+                vscode.window.showErrorMessage('Invalid \'Owner\' value!');
+                return;
+            }
+            if(!utils.isValidPeirNamePart(utils.postfix(context.pier, '/')))  {
+                vscode.window.showErrorMessage('Invalid \'Pier\' value!');
+                return;
+            }
+            if(!utils.isNetworkEndpoint(context.nat.stun)) {
+                vscode.window.showErrorMessage('Invalid \'STUN server\' value!');
+                return;
+            }
+            if(context.nat.hops > 255) {
+                vscode.window.showErrorMessage('Invalid \'Punch hops\' value!');
+                return;
+            }
+            if(context.dht.bootstrap !== '' && !utils.isNetworkEndpointList(context.dht.bootstrap)) {
+                vscode.window.showErrorMessage('Invalid \'Bootstrap\' value!');
+                return;
+            }
+            if(context.dht.port > 65535) {
+                vscode.window.showErrorMessage('Invalid DHT \'Port\' value!');
+                return;
+            }
+            if(context.email.smtp !== '' && !utils.isNetworkEndpoint(context.email.smtp)) {
+                vscode.window.showErrorMessage('Invalid \'SMTP\' value!');
+                return;
+            }
+            if(context.email.imap !== '' && !utils.isNetworkEndpoint(context.email.imap)) {
+                vscode.window.showErrorMessage('Invalid \'IMAP\' value!');
+                return;
+            }
             try {
                 if (this.autostart !== context.autostart) {
                     if (context.autostart) {
