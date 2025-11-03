@@ -87,9 +87,6 @@ class Controller {
 	async initialize(pier?: string) : Promise<void> {
 		try {
 			if (pier) {
-				if (!fs.existsSync(this.home)) {
-					fs.mkdirSync(this.home, { recursive: true });
-				}
 				await this.webpierContext.init(pier);
 			} else {
 				if (!fs.existsSync(this.home + '/webpier.json')) {
@@ -107,7 +104,7 @@ class Controller {
 			});
 			vscode.commands.executeCommand('setContext', 'context.init', true);
 			if (pier) {
-				vscode.commands.executeCommand('setContext', 'context.edit', 'context');
+				vscode.commands.executeCommand('remote-beyond.openContextEditor');
 			}
 		} catch (err) {
 			utils.onError(`Could not init webpier context. ${err}`);

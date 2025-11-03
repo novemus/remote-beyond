@@ -13,15 +13,16 @@ export class StaleContext extends Error {
 
 class Locker {
     private fd: number;
-    private mtime?: Date;
+    private mtime: Date;
 
     constructor(file: string) {
         this.fd = fs.openSync(file, 'w');
+        this.mtime = fs.fstatSync(this.fd).mtime;
     }
 
     hardLock() {
         ext.flockSync(this.fd, 'ex');
-        if (!this.mtime || fs.fstatSync(this.fd).mtime.toISOString() !== this.mtime.toISOString()) {
+        if (fs.fstatSync(this.fd).mtime.toISOString() !== this.mtime.toISOString()) {
             throw new StaleContext();
         }
         this.mtime = new Date();
@@ -186,6 +187,9 @@ export class Context {
     private locker: Locker;
 
     constructor(private home: string) {
+        if (!fs.existsSync(this.home)) {
+			fs.mkdirSync(this.home, { recursive: true });
+		}
         this.locker = new Locker(this.home + '/webpier.lock');
     }
 
@@ -256,10 +260,15 @@ export class Context {
                 if (email.isDirectory()) {
                     for(const host of fs.readdirSync(email.parentPath + '/' + email.name, { withFileTypes: true })) {
                         const pier = email.name + '/' + host.name;
-                        const conf = this.config.repo + '/' + pier + '/webpier.json';
-                        if (host.isDirectory() && fs.existsSync(conf)) {
-                            const config = await utils.readJsonFile(conf);
-                            this.services.set(pier, Service.parseArray(config.services));
+                        const cert = this.config.repo + '/' + pier + '/cert.crt';
+                        if (fs.existsSync(cert)) {
+                            const conf = this.config.repo + '/' + pier + '/webpier.json';
+                            if (fs.existsSync(conf)) {
+                                const config = await utils.readJsonFile(conf);
+                                this.services.set(pier, Service.parseArray(config.services));
+                            } else {
+                                this.services.set(pier, []);
+                            }
                         }
                     }
                 }
@@ -387,6 +396,7 @@ export class Context {
     public addRemote(pier: string, cert: string) {
         const dir = this.config.repo + '/' + pier;
         if (pier !== this.config.pier && !fs.existsSync(dir)) {
+            this.services.set(pier, []);
             this.locker.hardLock();
             try {
                 fs.mkdirSync(dir, { recursive: true });
