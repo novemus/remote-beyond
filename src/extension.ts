@@ -83,6 +83,7 @@ class Controller {
 			vscode.window.showWarningMessage('You must define the webpier identity!');
 		}
 	}
+
 	async initialize(pier?: string) : Promise<void> {
 		try {
 			if (pier) {
@@ -109,7 +110,7 @@ class Controller {
 				vscode.commands.executeCommand('setContext', 'context.edit', 'context');
 			}
 		} catch (err) {
-			utils.onError(`Could not init webpier context: ${err}`);
+			utils.onError(`Could not init webpier context. ${err}`);
 		}
 	}
 
@@ -138,16 +139,16 @@ class Controller {
 					try {
 						await slipwayClient.adjustAll();
 					} catch (err) {
-						utils.onError(`Could not adjust services: ${err}`);
+						utils.onError(`Could not adjust services. ${err}`);
 					}
 				} catch (err) {
-					utils.onError(`Could not change the context: ${err}`);
+					utils.onError(`Could not change the context. ${err}`);
 				}
 			});
 
 			vscode.commands.executeCommand('setContext', 'context.edit', 'context');
 		} catch (err) {
-			utils.onError(`Could setup context editor: ${err}`);
+			utils.onError(`Could setup context editor. ${err}`);
 		}
 	}
 
@@ -171,7 +172,7 @@ class Controller {
 						try {
 							await slipwayClient.adjustService(new slipway.Handle(pier, stale.name));
 						} catch (err) {
-							utils.onError(`Could not unplug the service: ${err}`);
+							utils.onError(`Could not unplug the service. ${err}`);
 						}
 					} else {
 						unit.root.remove(unit);
@@ -179,28 +180,29 @@ class Controller {
 					}
 
 					const item = new WebpierService(fresh.name, fresh.pier, fresh.address, unit.root);
-					item.root.insert(item);
-					item.root.refresh();
-
-					view.reveal(item, { expand: true, focus: true });
-					vscode.commands.executeCommand('setContext', 'context.edit', null);
 
 					try {
 						await slipwayClient.adjustService(new slipway.Handle(pier, fresh.name));
 						if (fresh.autostart) {
-							item.setStatus(slipway.Status.Lonely, []);
+							item.setStatus(slipway.Status.Lonely, '', []);
 						}
 					} catch (err) {
-						item.setStatus(slipway.Status.Broken, []);
-						utils.onError(`Could not adjust state of the service: ${err}`);
+						item.setStatus(slipway.Status.Broken, (err as Error).name, []);
+						utils.onError(`Could not adjust state of the service. ${err}`);
 					}
+
+					item.root.insert(item);
+					item.root.refresh();
+					view.reveal(item, { expand: true, focus: true });
+
+					vscode.commands.executeCommand('setContext', 'context.edit', null);
 				} catch (err) {
-					utils.onError(`Could not change the service: ${err}`);
+					utils.onError(`Could not change the service. ${err}`);
 				}
 			});
 			vscode.commands.executeCommand('setContext', 'context.edit', 'service');
 		} catch (err) {
-			utils.onError(`Could setup service editor: ${err}`);
+			utils.onError(`Could setup service editor. ${err}`);
 		}
 	}
 
@@ -218,23 +220,23 @@ class Controller {
 				await webpierContext.setService(pier, config);
 
 				const item = new WebpierService(config.name, config.pier, config.address, tree);
-				item.root.insert(item);
-				item.root.refresh();
-
-				view.reveal(item, { expand: true, focus: true });
-				vscode.commands.executeCommand('setContext', 'context.edit', null);
-
 				try {
 					await slipwayClient.adjustService(new slipway.Handle(pier, config.name));
 					if (config.autostart) {
-						item.setStatus(slipway.Status.Lonely, []);
+						item.setStatus(slipway.Status.Lonely, '', []);
 					}
 				} catch (err) {
-					item.setStatus(slipway.Status.Broken, []);
-					utils.onError(`Could not adjust state of the service: ${err}`);
+					item.setStatus(slipway.Status.Broken, (err as Error).name, []);
+					utils.onError(`Could not adjust state of the service. ${err}`);
 				}
+
+				item.root.insert(item);
+				item.root.refresh();
+				view.reveal(item, { expand: true, focus: true });
+
+				vscode.commands.executeCommand('setContext', 'context.edit', null);
 			} catch (err) {
-				utils.onError(`Could not create the service: ${err}`);
+				utils.onError(`Could not create the service. ${err}`);
 			}
 		});
 		vscode.commands.executeCommand('setContext', 'context.edit', 'service');
@@ -244,10 +246,10 @@ class Controller {
 		try {
 			const pier = item.root.remote ? item.pier : this.webpierContext.getPier();
 			await this.slipwayClient.engageService(new slipway.Handle(pier, item.name));
-			item.setStatus(slipway.Status.Lonely, []);
+			item.setStatus(slipway.Status.Lonely, '', []);
 			item.refresh();
 		} catch (err) {
-			utils.onError(`Could not start the service: ${err}`);
+			utils.onError(`Could not start the service. ${err}`);
 		}
 	}
 
@@ -255,10 +257,10 @@ class Controller {
 		try {
 			const pier = item.root.remote ? item.pier : this.webpierContext.getPier();
 			await this.slipwayClient.unplugService(new slipway.Handle(pier, item.name));
-			item.setStatus(slipway.Status.Asleep, []);
+			item.setStatus(slipway.Status.Asleep, '', []);
 			item.refresh();
 		} catch (err) {
-			utils.onError(`Could not stop the service: ${err}`);
+			utils.onError(`Could not stop the service. ${err}`);
 		}
 	}
 
@@ -273,15 +275,17 @@ class Controller {
 				return;
 			}
 			await this.webpierContext.delService(pier, item.name);
-			item.root.remove(item);
-			item.root.refresh();
+
 			try {
 				await this.slipwayClient.adjustService(new slipway.Handle(item.pier, item.name));
 			} catch (err) {
-				utils.onError(`Could not unplug the service: ${err}`);
+				utils.onError(`Could not unplug the service. ${err}`);
 			}
+
+			item.root.remove(item);
+			item.root.refresh();
 		} catch (err) {
-			utils.onError(`Could not delete the service: ${err}`);
+			utils.onError(`Could not delete the service. ${err}`);
 		}
 	}
 
@@ -299,7 +303,7 @@ class Controller {
 			this.valid = true;
 		} catch (err) {
 			if (this.valid) {
-				utils.onError(`Could not refresh webpier context: ${err}`);
+				utils.onError(`Could not refresh webpier context. ${err}`);
 			}
 			this.valid = false;
 		}
@@ -362,7 +366,7 @@ class Controller {
 				}
 			}
 		} catch (err) {
-			utils.onError(`Could not refresh webpier context: ${err}`);
+			utils.onError(`Could not refresh webpier context. ${err}`);
 		}
 	}
 
@@ -406,48 +410,48 @@ class Controller {
 				}
 			}
 		} catch (err) {
-			utils.onError(`Could not refresh webpier context: ${err}`);
+			utils.onError(`Could not refresh webpier context. ${err}`);
 		}
 	}
 
 	async activate(): Promise<void> {
-		const controller = this;
-		await controller.initialize();
+		const self = this;
+		await self.initialize();
 
 		this.context.subscriptions.push(
-			vscode.window.registerWebviewViewProvider('webpierServiceEditor', controller.serviceEditor)
+			vscode.window.registerWebviewViewProvider('webpierServiceEditor', self.serviceEditor)
 		);
 
 		this.context.subscriptions.push(
-			vscode.window.registerWebviewViewProvider('webpierContextEditor', controller.webpierEditor)
+			vscode.window.registerWebviewViewProvider('webpierContextEditor', self.webpierEditor)
 		);
 
 		this.context.subscriptions.push(vscode.commands.registerCommand('remote-beyond.startService', async (service: WebpierService) => {
-			await controller.startService(service);
+			await self.startService(service);
 		}));
 
 		this.context.subscriptions.push(vscode.commands.registerCommand('remote-beyond.stopService', async (service: WebpierService) => {
-			await controller.stopService(service);
+			await self.stopService(service);
 		}));
 
 		this.context.subscriptions.push(vscode.commands.registerCommand('remote-beyond.delService', async (service: WebpierService) => {
-			await controller.deleteService(service);
+			await self.deleteService(service);
 		}));
 
 		this.context.subscriptions.push(vscode.commands.registerCommand('remote-beyond.openServiceEditor', (service: WebpierService) => {
-			controller.editService(service);
+			self.editService(service);
 		}));
 
 		this.context.subscriptions.push(vscode.commands.registerCommand('remote-beyond.addImportService', () => {
-			controller.createService(false);
+			self.createService(false);
 		}));
 
 		this.context.subscriptions.push(vscode.commands.registerCommand('remote-beyond.addExportService', () => {
-			controller.createService(true);
+			self.createService(true);
 		}));
 
 		this.context.subscriptions.push(vscode.commands.registerCommand('remote-beyond.openContextEditor', () => {
-			controller.editContext();
+			self.editContext();
 		}));
 
 		this.context.subscriptions.push(vscode.commands.registerCommand('remote-beyond.collapseImportTree', () => {
@@ -463,15 +467,15 @@ class Controller {
 		}));
 
 		this.context.subscriptions.push(vscode.commands.registerCommand('remote-beyond.startup', async () => {
-			await controller.startup();
+			await self.startup();
 		}));
 
 		this.context.subscriptions.push(vscode.commands.registerCommand('remote-beyond.uploadOffer', async () => {
-			await controller.uploadOffer();
+			await self.uploadOffer();
 		}));
 
 		this.context.subscriptions.push(vscode.commands.registerCommand('remote-beyond.createOffer', async () => {
-			await controller.createOffer();
+			await self.createOffer();
 		}));
 	}
 
@@ -484,12 +488,26 @@ class Controller {
 let controller: Controller;
 
 export async function activate(context: vscode.ExtensionContext) {
+
 	controller = new Controller(context);
 	controller.activate();
-	console.log('Extension "remote-beyond" is now active!');
+
+	context.subscriptions.push(vscode.workspace.onDidChangeConfiguration((event: vscode.ConfigurationChangeEvent) => {
+		if (event.affectsConfiguration('remote-beyond.webpier.home')) {
+
+			console.log('Reboot \'remote-beyond\' extension...');
+
+			deactivate();
+			activate(context);
+
+			vscode.window.showInformationMessage('Extension \'Remote - Beyond\' was rebooted due to a change of the webpier home directory!');
+		}
+	}));
+
+	console.log('Extension \'remote-beyond\' is now active!');
 }
 
 export function deactivate() {
 	controller.deactivate();
-	console.log('Extension "remote-beyond" is now inactive!');
+	console.log('Extension \'remote-beyond\' is now inactive!');
 }

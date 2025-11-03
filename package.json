@@ -1,6 +1,6 @@
 {
   "name": "remote-beyond",
-  "displayName": "remote-beyond",
+  "displayName": "Remote - Beyond",
   "description": "Forward non-public remote services to the local interface",
   "publisher": "novemus",
   "version": "0.0.1",

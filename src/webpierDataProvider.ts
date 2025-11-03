@@ -65,13 +65,13 @@ export class WebpierDataProvider implements vscode.TreeDataProvider<WebpierDataI
             for(const item of report) {
                 const service = this.services.get(item.pier + '/' + item.service);
                 if (service) {
-                    service.setStatus(item.state, item.tunnels);
+                    service.setStatus(item.state, item.message, item.tunnels);
                 }
             };
         } else {
             const service = this.services.get(report.pier + '/' + report.service);
             if (service) {
-                service.setStatus(report.state, report.tunnels);
+                service.setStatus(report.state, report.message, report.tunnels);
             }
         }
     }
@@ -101,7 +101,7 @@ export class WebpierNode extends WebpierDataItem {
     setStatus(connected: boolean, pid?: number) {
         this.iconPath = new vscode.ThemeIcon('plug', new vscode.ThemeColor(connected ? 'debugIcon.startForeground' : 'debugIcon.breakpointDisabledForeground'));
         if (pid) {
-            this.tooltip = this.owner + '/' + this.pier + ' pid=' + pid;
+            this.tooltip = 'pid: ' + pid;
         } else {
             this.tooltip = this.owner + '/' + this.pier;
         }
@@ -123,12 +123,12 @@ export class WebpierService extends WebpierDataItem {
         }
     }
 
-    setStatus(status: slipway.Status, tunnels: slipway.Tunnel[]) {
+    setStatus(status: slipway.Status, message: string, tunnels: slipway.Tunnel[]) {
         this.contextValue = 'webpier.' + (status === slipway.Status.Asleep ? 'asleep' : 'active') + '.service';
         switch(status) {
             case slipway.Status.Broken:
                 this.iconPath = new vscode.ThemeIcon('broadcast', new vscode.ThemeColor('debugIcon.stopForeground'));
-                this.tooltip = 'broken';
+                this.tooltip = 'broken: ' + message;
                 break;
             case slipway.Status.Lonely:
                 this.iconPath = new vscode.ThemeIcon('broadcast', new vscode.ThemeColor('debugIcon.continueForeground'));
