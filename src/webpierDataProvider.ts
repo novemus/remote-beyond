@@ -156,9 +156,9 @@ export class WebpierService extends WebpierDataItem {
 
         if (status !== this.status) {
             if (status === slipway.Status.Burden) {
-                vscode.window.showInformationMessage(`WebPier service '${this.name}' linked to ${this.address} is connected`);
+                vscode.window.showInformationMessage(`The '${this.name}' service linked to ${this.address} is connected`);
             } else if (status === slipway.Status.Broken) {
-                vscode.window.showErrorMessage(`WebPier service '${this.name}' linked to ${this.address} is failed: ${message}`);
+                vscode.window.showErrorMessage(`The '${this.name}' service linked to ${this.address} is failed. ${message}`);
             }
         }
 

@@ -40,7 +40,7 @@ export class Health {
     static parseArray(data: any) : Health[] {
         const arr: Health[] = [];
         for (const item of data) {
-            arr.push(new Health(item.pier, item.service, parseInt(item.state) as Status, item.messageem));
+            arr.push(new Health(item.pier, item.service, parseInt(item.state) as Status, item.message));
         }
         return arr;
     }

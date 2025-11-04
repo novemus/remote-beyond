@@ -277,7 +277,7 @@ class Controller {
 		try {
 			const pier = item.root.remote ? item.pier : this.webpierContext.getPier();
 			const answer = await vscode.window.showInformationMessage(
-				`Do you want to remove ${item.root.remote ? 'import' : 'export'} service "${item.name}"?`,
+				`Do you want to remove ${item.root.remote ? 'import' : 'export'} service '${item.name}'?`,
 				'Yes', 'No'
 			);
 			if (answer !== 'Yes') {
