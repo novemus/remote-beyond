@@ -54,6 +54,9 @@ class Controller {
 		this.importView = vscode.window.createTreeView('webpierImport', { treeDataProvider: this.importTree });
 		this.exportView = vscode.window.createTreeView('webpierExport', { treeDataProvider: this.exportTree });
 
+		this.context.subscriptions.push(this.importView);
+		this.context.subscriptions.push(this.exportView);
+
 		this.serviceEditor = new WebpierServiceEditor(this.context.extensionUri);
 		this.webpierEditor = new WebpierContextEditor(this.context.extensionUri);
 	}
@@ -104,6 +107,17 @@ class Controller {
 				this.refresh();
 			});
 			vscode.commands.executeCommand('setContext', 'context.init', true);
+
+			const status = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
+
+			status.name = 'Remote-Beyond';
+			status.text = `$(home) ${this.webpierContext.getPier()}`;
+			status.command = 'webpierImport.focus';
+			status.tooltip = `Remote-Beyond: ${this.webpierContext.getPier()}`;
+			status.show();
+
+			this.context.subscriptions.push(status);
+
 			if (pier) {
 				vscode.commands.executeCommand('remote-beyond.openContextEditor');
 			}
@@ -577,7 +591,7 @@ export async function activate(context: vscode.ExtensionContext) {
 			deactivate();
 			activate(context);
 
-			vscode.window.showInformationMessage('Extension \'Remote - Beyond\' was rebooted due to a change of the webpier home directory!');
+			vscode.window.showInformationMessage('Extension \'Remote-Beyond\' was rebooted due to a change of the webpier home directory!');
 		}
 	}));
 

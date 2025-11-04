@@ -1,6 +1,6 @@
 {
   "name": "remote-beyond",
-  "displayName": "Remote - Beyond",
+  "displayName": "Remote-Beyond",
   "description": "Forward non-public remote services to the local interface",
   "publisher": "novemus",
   "version": "0.0.1",
@@ -17,7 +17,7 @@
   "contributes": {
     "configuration": [
       {
-        "title": "Remote - Beyond",
+        "title": "Remote-Beyond",
         "properties": {
           "remote-beyond.webpier.home": {
             "order": 1,
@@ -150,7 +150,7 @@
       "activitybar": [
         {
           "id": "remote-beyond",
-          "title": "Remote - Beyond",
+          "title": "Remote-Beyond",
           "icon": "resources/mono.png"
         }
       ]
