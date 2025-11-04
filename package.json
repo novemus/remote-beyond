@@ -38,91 +38,91 @@
       {
         "command": "remote-beyond.startup",
         "title": "Init workspace context...",
-        "category": "Remote - Beyond"
+        "category": "Remote-Beyond"
       },
       {
         "command": "remote-beyond.createOffer",
         "title": "Create an offer...",
-        "category": "Remote - Beyond"
+        "category": "Remote-Beyond"
       },
       {
         "command": "remote-beyond.uploadOffer",
         "title": "Upload an offer...",
-        "category": "Remote - Beyond"
+        "category": "Remote-Beyond"
       },
       {
         "command": "remote-beyond.startImportService",
         "title": "Start import service",
-        "category": "Remote - Beyond"
+        "category": "Remote-Beyond"
       },
       {
         "command": "remote-beyond.startExportService",
         "title": "Start export service",
-        "category": "Remote - Beyond"
+        "category": "Remote-Beyond"
       },
       {
         "command": "remote-beyond.stopImportService",
         "title": "Stop import service",
-        "category": "Remote - Beyond"
+        "category": "Remote-Beyond"
       },
       {
         "command": "remote-beyond.stopExportService",
         "title": "Stop export service",
-        "category": "Remote - Beyond"
+        "category": "Remote-Beyond"
       },
       {
         "command": "remote-beyond.editImportService",
         "title": "Edit import service",
-        "category": "Remote - Beyond"
+        "category": "Remote-Beyond"
       },
       {
         "command": "remote-beyond.editExportService",
         "title": "Edit export service",
-        "category": "Remote - Beyond"
+        "category": "Remote-Beyond"
       },
       {
         "command": "remote-beyond.delImportService",
         "title": "Delete import service",
-        "category": "Remote - Beyond"
+        "category": "Remote-Beyond"
       },
       {
         "command": "remote-beyond.delExportService",
         "title": "Delete export service",
-        "category": "Remote - Beyond"
+        "category": "Remote-Beyond"
       },
       {
         "command": "remote-beyond.addImportService",
         "title": "Add import service",
         "icon": "$(new-file)",
-        "category": "Remote - Beyond"
+        "category": "Remote-Beyond"
       },
       {
         "command": "remote-beyond.addExportService",
         "title": "Add export service",
         "icon": "$(new-file)",
-        "category": "Remote - Beyond"
+        "category": "Remote-Beyond"
       },
       {
         "command": "remote-beyond.openContextEditor",
-        "title": "Edit webpier context",
+        "title": "Edit context",
         "icon": "$(gear)",
-        "category": "Remote - Beyond"
+        "category": "Remote-Beyond"
       },
       {
         "command": "remote-beyond.collapseImportTree",
         "title": "Collapse import tree view",
         "icon": "$(collapse-all)",
-        "category": "Remote - Beyond"
+        "category": "Remote-Beyond"
       },
       {
         "command": "remote-beyond.collapseExportTree",
         "title": "Collapse export tree view",
         "icon": "$(collapse-all)",
-        "category": "Remote - Beyond"
+        "category": "Remote-Beyond"
       },
       {
         "command": "remote-beyond.startService",
-        "title": "Start webpier service",
+        "title": "Start service",
         "icon": "$(play-circle)"
       },
       {

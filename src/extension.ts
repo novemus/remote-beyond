@@ -90,6 +90,7 @@ class Controller {
 				await this.webpierContext.init(pier);
 			} else {
 				if (!fs.existsSync(this.home + '/webpier.json')) {
+					vscode.commands.executeCommand('setContext', 'context.init', false);
 					return;
 				}
 				await this.webpierContext.load();
@@ -337,8 +338,8 @@ class Controller {
 
 				for(const service of offer.services) {
 					const address = await vscode.window.showInputBox({
-						title: offer.pier,
-						prompt: `Enter the address for the '${service.name}' service from the '${offer.pier}' pier.`,
+						title: 'Remote-Beyond: Import',
+						prompt: `Enter the address for the '${service.name}' service from the '${offer.pier}'.`,
 						placeHolder: '127.0.0.1:12345',
 						validateInput: (text: string) => {
 							return utils.isIPv4Endpoint(text) ? null : 'Enter IP:port pair.';
@@ -376,12 +377,12 @@ class Controller {
 				choice.push({
 					label: service.name,
 					description: service.address,
-					detail: service.rendezvous
+					detail: `Rendezvous: ${service.rendezvous === '' ? 'Email' : 'DHT'}`
 				});
 			});
 			const selects = await vscode.window.showQuickPick(choice, {
-				title: pier,
-				placeHolder: 'Select services to export',
+				title: 'Remote-Beyond: Export',
+				placeHolder: `Select services you want to export.`,
 				canPickMany: true
 			});
 
