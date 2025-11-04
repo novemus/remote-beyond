@@ -51,15 +51,43 @@
         "category": "Remote - Beyond"
       },
       {
-        "command": "remote-beyond.startService",
-        "title": "Start webpier service",
-        "icon": "$(play-circle)",
+        "command": "remote-beyond.startImportService",
+        "title": "Start import service",
         "category": "Remote - Beyond"
       },
       {
-        "command": "remote-beyond.stopService",
-        "title": "Stop service",
-        "icon": "$(stop-circle)",
+        "command": "remote-beyond.startExportService",
+        "title": "Start export service",
+        "category": "Remote - Beyond"
+      },
+      {
+        "command": "remote-beyond.stopImportService",
+        "title": "Stop import service",
+        "category": "Remote - Beyond"
+      },
+      {
+        "command": "remote-beyond.stopExportService",
+        "title": "Stop export service",
+        "category": "Remote - Beyond"
+      },
+      {
+        "command": "remote-beyond.editImportService",
+        "title": "Edit import service",
+        "category": "Remote - Beyond"
+      },
+      {
+        "command": "remote-beyond.editExportService",
+        "title": "Edit export service",
+        "category": "Remote - Beyond"
+      },
+      {
+        "command": "remote-beyond.delImportService",
+        "title": "Delete import service",
+        "category": "Remote - Beyond"
+      },
+      {
+        "command": "remote-beyond.delExportService",
+        "title": "Delete export service",
         "category": "Remote - Beyond"
       },
       {
@@ -72,24 +100,6 @@
         "command": "remote-beyond.addExportService",
         "title": "Add export service",
         "icon": "$(new-file)",
-        "category": "Remote - Beyond"
-      },
-      {
-        "command": "remote-beyond.delService",
-        "title": "Delete service",
-        "icon": "$(notebook-delete-cell)",
-        "category": "Remote - Beyond"
-      },
-      {
-        "command": "remote-beyond.openServiceEditor",
-        "title": "Edit service",
-        "icon": "$(edit)",
-        "category": "Remote - Beyond"
-      },
-      {
-        "command": "remote-beyond.closeEditor",
-        "title": "Close editor",
-        "icon": "$(close)",
         "category": "Remote - Beyond"
       },
       {
@@ -109,6 +119,31 @@
         "title": "Collapse export tree view",
         "icon": "$(collapse-all)",
         "category": "Remote - Beyond"
+      },
+      {
+        "command": "remote-beyond.startService",
+        "title": "Start webpier service",
+        "icon": "$(play-circle)"
+      },
+      {
+        "command": "remote-beyond.stopService",
+        "title": "Stop service",
+        "icon": "$(stop-circle)"
+      },
+      {
+        "command": "remote-beyond.delService",
+        "title": "Delete service",
+        "icon": "$(notebook-delete-cell)"
+      },
+      {
+        "command": "remote-beyond.editService",
+        "title": "Edit service",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "remote-beyond.closeEditor",
+        "title": "Close editor",
+        "icon": "$(close)"
       }
     ],
     "viewsContainers": {
@@ -171,11 +206,15 @@
           "when": "false"
         },
         {
-          "command": "remote-beyond.openServiceEditor",
+          "command": "remote-beyond.editService",
           "when": "false"
         },
         {
           "command": "remote-beyond.delService",
+          "when": "false"
+        },
+        {
+          "command": "remote-beyond.closeEditor",
           "when": "false"
         }
       ],
@@ -231,7 +270,7 @@
           "group": "inline"
         },
         {
-          "command": "remote-beyond.openServiceEditor",
+          "command": "remote-beyond.editService",
           "when": "viewItem === 'webpier.active.service' || viewItem === 'webpier.asleep.service'",
           "group": "inline"
         },
@@ -245,7 +284,7 @@
     "viewsWelcome": [
       {
         "view": "webpierStartup",
-        "contents": "To get started you need to install [WebPier](https://github.com/novemus/webpier/releases/latest) application and define the webpier identity wich consists of the Owner and the Pier names. The Owner name should be an email address, if you want to use Email as the rendezvous in addition to DHT network, and the Pier name must be unique for the Owner.\n[Init WebPier Context](command:remote-beyond.startup)"
+        "contents": "To get started you need to install [WebPier](https://github.com/novemus/webpier/releases/latest) application and define local Pier identity wich consists of the Owner and the Host names. The Owner name should be an email address, if you want to use Email as the rendezvous in addition to DHT network, and the Host name must be unique for the Owner.\n[Init WebPier Context](command:remote-beyond.startup)"
       }
     ]
   },

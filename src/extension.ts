@@ -411,6 +411,53 @@ class Controller {
 		}
 	}
 
+	async pickServiceAndExecCommand(command : 'start' | 'stop' | 'edit' | 'delete', local: boolean) : Promise<void> {
+		const pool = local ? this.webpierContext.getLocalServices() : this.webpierContext.getRemoteServices();
+		const choice: vscode.QuickPickItem[] = [];
+
+		pool.forEach((services, pier) => {
+			services.forEach(service => {
+				choice.push({
+					label: service.name,
+					description: service.address,
+					detail: pier
+				});
+			});
+		});
+
+		const select = await vscode.window.showQuickPick(choice, {
+			title: `Select the service to ${command}`,
+			placeHolder: 'Enter service name',
+			canPickMany: false
+		});
+
+		if (select && select.detail) {
+			const item = local 
+					   ? this.exportTree.find(select.detail, select.label) 
+					   : this.importTree.find(select.detail, select.label);
+
+			if (item === undefined) {
+				utils.onError(`Could not find service with name ${select.label} for the ${select.detail} pier.`);
+				return;
+			}
+
+			switch (command) {
+				case 'start':
+					await this.startService(item);
+					break;
+				case 'stop':
+					await this.stopService(item);
+					break;
+				case 'edit':
+					this.editService(item);
+					break;
+				case 'delete':
+					await this.deleteService(item);
+					break;
+			}
+		}
+	}
+
 	async activate(): Promise<void> {
 		const self = this;
 		await self.initialize();
@@ -422,6 +469,38 @@ class Controller {
 		this.context.subscriptions.push(
 			vscode.window.registerWebviewViewProvider('webpierContextEditor', self.webpierEditor)
 		);
+
+		this.context.subscriptions.push(vscode.commands.registerCommand('remote-beyond.startImportService', async () => {
+			await self.pickServiceAndExecCommand('start', false);
+		}));
+
+		this.context.subscriptions.push(vscode.commands.registerCommand('remote-beyond.startExportService', async () => {
+			await self.pickServiceAndExecCommand('start', true);
+		}));
+
+		this.context.subscriptions.push(vscode.commands.registerCommand('remote-beyond.stopImportService', async () => {
+			await self.pickServiceAndExecCommand('stop', false);
+		}));
+
+		this.context.subscriptions.push(vscode.commands.registerCommand('remote-beyond.stopExportService', async () => {
+			await self.pickServiceAndExecCommand('stop', true);
+		}));
+
+		this.context.subscriptions.push(vscode.commands.registerCommand('remote-beyond.editImportService', async () => {
+			await self.pickServiceAndExecCommand('edit', false);
+		}));
+
+		this.context.subscriptions.push(vscode.commands.registerCommand('remote-beyond.editExportService', async () => {
+			await self.pickServiceAndExecCommand('edit', true);
+		}));
+
+		this.context.subscriptions.push(vscode.commands.registerCommand('remote-beyond.delImportService', async () => {
+			await self.pickServiceAndExecCommand('delete', false);
+		}));
+
+		this.context.subscriptions.push(vscode.commands.registerCommand('remote-beyond.delExportService', async () => {
+			await self.pickServiceAndExecCommand('delete', true);
+		}));
 
 		this.context.subscriptions.push(vscode.commands.registerCommand('remote-beyond.startService', async (service: WebpierService) => {
 			await self.startService(service);
@@ -435,7 +514,7 @@ class Controller {
 			await self.deleteService(service);
 		}));
 
-		this.context.subscriptions.push(vscode.commands.registerCommand('remote-beyond.openServiceEditor', (service: WebpierService) => {
+		this.context.subscriptions.push(vscode.commands.registerCommand('remote-beyond.editService', (service: WebpierService) => {
 			self.editService(service);
 		}));
 

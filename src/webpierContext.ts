@@ -335,6 +335,27 @@ export class Context {
         return services ? JSON.parse(JSON.stringify(services)) : [];
     }
 
+    public getLocalServices() : Map<string, Service[]> {
+        const result = new Map<string, Service[]>();
+        const services = this.services.get(this.config.pier);
+        if(services) {
+            result.set(this.config.pier, JSON.parse(JSON.stringify(services)));
+        } else {
+            result.set(this.config.pier, []);
+        }
+        return result;
+    }
+
+    public getRemoteServices() : Map<string, Service[]> {
+        const result = new Map<string, Service[]>();
+        for(const [pier, services] of this.services) {
+            if (pier !== this.config.pier) {
+                result.set(pier, JSON.parse(JSON.stringify(services)));
+            }
+        }
+        return result;
+    }
+
     public getService(pier: string, name: string) : Service {
         const pool = this.services.get(pier);
         if (pool) {

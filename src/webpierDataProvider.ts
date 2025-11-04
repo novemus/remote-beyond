@@ -34,6 +34,10 @@ export class WebpierDataProvider implements vscode.TreeDataProvider<WebpierDataI
         return element.getParent();
     }
 
+    find(pier: string, service: string): WebpierService | undefined {
+        return this.services.get(pier + '/' + service);
+    }
+
     refresh(item?: WebpierDataItem): void {
         this._onDidChangeTreeData.fire(item);
     }
