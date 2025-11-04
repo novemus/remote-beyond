@@ -54,9 +54,6 @@ class Controller {
 		this.importView = vscode.window.createTreeView('webpierImport', { treeDataProvider: this.importTree });
 		this.exportView = vscode.window.createTreeView('webpierExport', { treeDataProvider: this.exportTree });
 
-		this.context.subscriptions.push(this.importView);
-		this.context.subscriptions.push(this.exportView);
-
 		this.serviceEditor = new WebpierServiceEditor(this.context.extensionUri);
 		this.webpierEditor = new WebpierContextEditor(this.context.extensionUri);
 	}

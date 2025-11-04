@@ -261,22 +261,22 @@
       "view/item/context": [
         {
           "command": "remote-beyond.startService",
-          "when": "viewItem === 'webpier.asleep.service'",
+          "when": "viewItem === 'idleService'",
           "group": "inline"
         },
         {
           "command": "remote-beyond.stopService",
-          "when": "viewItem === 'webpier.active.service'",
+          "when": "viewItem === 'busyService'",
           "group": "inline"
         },
         {
           "command": "remote-beyond.editService",
-          "when": "viewItem === 'webpier.active.service' || viewItem === 'webpier.asleep.service'",
+          "when": "viewItem === 'busyService' || viewItem === 'idleService'",
           "group": "inline"
         },
         {
           "command": "remote-beyond.delService",
-          "when": "viewItem === 'webpier.active.service' || viewItem === 'webpier.asleep.service'",
+          "when": "viewItem === 'busyService' || viewItem === 'idleService'",
           "group": "inline"
         }
       ]

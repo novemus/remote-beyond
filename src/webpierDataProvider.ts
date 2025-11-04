@@ -84,7 +84,6 @@ export class WebpierDataProvider implements vscode.TreeDataProvider<WebpierDataI
 export class WebpierNode extends WebpierDataItem {
     constructor(public readonly owner: string, public readonly pier: string, private service: WebpierService) {
         super(owner, vscode.TreeItemCollapsibleState.None);
-        this.contextValue = 'webpier.export.node';
         this.description = this.pier;
         this.tooltip = this.owner + '/' + this.pier;
         this.iconPath = new vscode.ThemeIcon('plug', new vscode.ThemeColor('debugIcon.breakpointDisabledForeground'));
@@ -113,11 +112,12 @@ export class WebpierNode extends WebpierDataItem {
 }
 
 export class WebpierService extends WebpierDataItem {
+    private status: slipway.Status = slipway.Status.Asleep;
     private nodes: Map<string, WebpierNode> = new Map<string, WebpierNode>();
     constructor(public readonly name: string, public readonly pier: string, public readonly address: string, public readonly root: WebpierDataProvider) {
         super(name, vscode.TreeItemCollapsibleState.Collapsed);
         this.description = this.address;
-        this.contextValue = 'webpier.asleep.service';
+        this.contextValue = 'idleService';
         this.iconPath = new vscode.ThemeIcon('broadcast', new vscode.ThemeColor('debugIcon.breakpointDisabledForeground'));
         this.tooltip = 'asleep';
         if (this.pier !== '') {
@@ -128,7 +128,8 @@ export class WebpierService extends WebpierDataItem {
     }
 
     setStatus(status: slipway.Status, message: string, tunnels: slipway.Tunnel[]) {
-        this.contextValue = 'webpier.' + (status === slipway.Status.Asleep ? 'asleep' : 'active') + '.service';
+        this.contextValue = status === slipway.Status.Asleep ? 'idleService' : 'busyService';
+
         switch(status) {
             case slipway.Status.Broken:
                 this.iconPath = new vscode.ThemeIcon('broadcast', new vscode.ThemeColor('debugIcon.stopForeground'));
@@ -147,10 +148,21 @@ export class WebpierService extends WebpierDataItem {
                 this.tooltip = 'asleep';
                 break;
         }
+
         this.nodes.forEach((value, key) => {
             const item = tunnels.find(item => item.pier === key);
             value.setStatus(item !== undefined, item?.pid);
         });
+
+        if (status !== this.status) {
+            if (status === slipway.Status.Burden) {
+                vscode.window.showInformationMessage(`WebPier service '${this.name}' linked to ${this.address} is connected`);
+            } else if (status === slipway.Status.Broken) {
+                vscode.window.showErrorMessage(`WebPier service '${this.name}' linked to ${this.address} is failed: ${message}`);
+            }
+        }
+
+        this.status = status;
     }
 
     getChildren() : vscode.ProviderResult<WebpierDataItem[]> {
