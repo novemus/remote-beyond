@@ -133,7 +133,11 @@ export class Slipway {
     private client?: net.Socket;
 
     constructor(private home: string) {
-        this.socket = path.join(os.tmpdir(), os.platform() === 'win32' ? utils.fnv1aHash(home).toString() : utils.murmurHash(home).toString(), 'slipway.jack');
+        if (os.platform() === 'win32') {
+            this.socket = path.join('\\\\.\\pipe', utils.fnv1aHash(home).toString() +'.slipway');
+        } else {
+            this.socket = path.join(os.tmpdir(), utils.murmurHash(home).toString() + '.slipway');
+        }
     }
 
     private async createClient(): Promise<net.Socket> {
