@@ -195,7 +195,7 @@ export class Context {
 
     public async init(pier: string) {
         this.config.pier = pier;
-        this.config.repo = this.home + '/' + Array.prototype.map.call(new TextEncoder().encode(pier), x => ('00' + x.toString(16)).slice(-2)).join('');
+        this.config.repo = this.home + '/' + utils.makeTextHash(pier);
 
         this.services = new Map<string, Service[]>();
 
@@ -486,18 +486,42 @@ export function getModulePath(name: string) : string {
     throw Error(`Could not find path to module: ${name}`);
 }
 
+function fetchTask(command: string, args: string) : string {
+    if (os.platform() === 'win32') {
+        var script =`
+$execute = '${command}';
+$arguments = '${args}';
+$name = '';
+try {
+    $tasksToUpdate = Get-ScheduledTask -TaskPath '\\WebPier\\' -ErrorAction Stop;
+    foreach ($task in $tasksToUpdate) {
+        if ($task.Actions[0].Execute -ne $execute) {
+            continue;
+        }
+        if ($task.Actions[0].Arguments -ne $arguments) {
+            continue;
+        }
+        $name = $task.TaskPath + $task.TaskName;
+    }
+}
+catch {
+}
+Write-Host $name;
+`;
+        const result = child.spawnSync('cmd.exe', ['/C', 'powershell', '-Command', `${script.replace(/\n/g, '')}`], { windowsHide: true });
+        if (result.status !== 0) {
+            throw new Error(result.stderr.toString());
+        }
+        return result.stdout.toString().replace(/\n/g, '');
+    }
+    return '';
+}
+
 export function verifyAutostart(command: string, args: string) : boolean {
     if (os.platform() === 'win32') {
-        const result = child.spawnSync('schtasks', [
-            '/Query',
-            '/TN',
-            '\\WebPier\\Task #' + utils.fnv1aHash(command + args).toString(),
-            '/HRESULT'
-        ], { windowsHide: true });
-
-        return result.status === 0;
+        return fetchTask(command, args) !== '';
     } else {
-        const record = '@reboot ' + command + ' ' + args;
+        const record = '@reboot ' + command.replace(/ /g, '\\ ') + ' ' + args;
 
         const result = child.spawnSync('crontab', ['-l'], { windowsHide: true });
         if (result.status !== 0) {
@@ -568,7 +592,7 @@ export function assignAutostart(command: string, args: string) {
     </Actions>
 </Task>`.replace(/\r?\n/g, '\r\n');
 
-        const id = utils.fnv1aHash(command + args).toString();
+        const id = utils.makeTextHash(command + args);
         const xml = os.tmpdir()  + '\\' + id + '.xml';
 
         fs.writeFileSync(xml, config, { encoding: 'utf-8' });
@@ -584,7 +608,7 @@ export function assignAutostart(command: string, args: string) {
             throw new Error(result.stderr.toString());
         }
     } else {
-        const record = '@reboot ' + command + ' ' + args;
+        const record = '@reboot ' + command.replace(/ /g, '\\ ') + ' ' + args;
 
         const list = child.spawnSync('crontab', ['-l'], { windowsHide: true });
         if (list.status !== 0) {
@@ -608,19 +632,20 @@ export function assignAutostart(command: string, args: string) {
 
 export function revokeAutostart(command: string, args: string) {
     if (os.platform() === 'win32') {
-        const id = utils.fnv1aHash(command + args).toString();
-        const result = child.spawnSync('powershell',
-            [
-                '-command', 
-                `Start-Process schtasks -ArgumentList '/Delete /TN "\\WebPier\\Task #${id}" /F /HRESULT' -Verb RunAs`
-            ]
-        );
-
-        if (result.status !== 0) {
-            throw new Error(result.stderr.toString());
+        const name = fetchTask(command, args);
+        if (name !== '') {
+            const result = child.spawnSync('powershell',
+                [
+                    '-command', 
+                    `Start-Process schtasks -ArgumentList '/Delete /TN "${name}" /F /HRESULT' -Verb RunAs`
+                ]
+            );
+            if (result.status !== 0) {
+                throw new Error(result.stderr.toString());
+            }
         }
     } else {
-        const record = '@reboot ' + command + ' ' + args;
+        const record = '@reboot ' + command.replace(/ /g, '\\ ') + ' ' + args;
 
         let list = child.spawnSync('crontab', ['-l'], { windowsHide: true });
         if (list.status !== 0) {

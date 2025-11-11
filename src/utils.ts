@@ -128,7 +128,7 @@ export function getNonce(): string {
 	return text;
 }
 
-export function fnv1aHash(str: string): bigint {
+export function makeTextHash(str: string): string {
     const fnvPrime: bigint = 1099511628211n;
     const fnvOffsetBasis: bigint = 14695981039346656037n;
     let hash: bigint = fnvOffsetBasis;
@@ -136,7 +136,7 @@ export function fnv1aHash(str: string): bigint {
         hash ^= BigInt(str.charCodeAt(i));
         hash = (hash * fnvPrime) & 0xffffffffffffffffn;
     }
-    return hash;
+    return hash.toString(16).toUpperCase();
 }
 
 export function murmurHash(str: string, seed: bigint = 0xc70f6907n): bigint {

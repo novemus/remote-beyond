@@ -134,9 +134,9 @@ export class Slipway {
 
     constructor(private home: string) {
         if (os.platform() === 'win32') {
-            this.socket = path.join('\\\\.\\pipe', utils.fnv1aHash(home).toString() +'.slipway');
+            this.socket = path.join('\\\\.\\pipe', utils.makeTextHash(home) +'.slipway');
         } else {
-            this.socket = path.join(os.tmpdir(), utils.murmurHash(home).toString() + '.slipway');
+            this.socket = path.join(os.tmpdir(), utils.makeTextHash(home) + '.slipway');
         }
     }
 
