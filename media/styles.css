@@ -27,6 +27,9 @@ td:first-child {
 td:last-child {
     width: 70%;
 }
+label {
+    white-space: nowrap;
+}
 input[type="text"]:disabled {
     color: var(--vscode-disabledForeground);
 }
