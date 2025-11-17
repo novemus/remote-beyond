@@ -486,22 +486,26 @@ export function getModulePath(name: string) : string {
     throw Error(`Could not find path to module: ${name}`);
 }
 
-function fetchTask(command: string, args: string) : string {
+function fetchTask(slipway: string, home: string) : string {
     if (os.platform() === 'win32') {
         var script =`
-$execute = '${command}';
-$arguments = '${args}';
+$execute = '${slipway}';
+$arguments = '${home}';
 $name = '';
 try {
     $tasksToUpdate = Get-ScheduledTask -TaskPath '\\WebPier\\' -ErrorAction Stop;
     foreach ($task in $tasksToUpdate) {
+        if ($task.Author -ne 'WebPier') {
+            continue;
+        }
         if ($task.Actions[0].Execute -ne $execute) {
             continue;
         }
-        if ($task.Actions[0].Arguments -ne $arguments) {
+        if ($task.Actions[0].Arguments -notcontains $arguments) {
             continue;
         }
         $name = $task.TaskPath + $task.TaskName;
+        break;
     }
 }
 catch {
@@ -517,11 +521,12 @@ Write-Host $name;
     return '';
 }
 
-export function verifyAutostart(command: string, args: string) : boolean {
+export function verifyAutostart(home: string) : boolean {
+    const slipway = getModulePath('slipway');
     if (os.platform() === 'win32') {
-        return fetchTask(command, args) !== '';
+        return fetchTask(slipway, home) !== '';
     } else {
-        const record = '@reboot ' + command.replace(/ /g, '\\ ') + ' ' + args;
+        const pattern = new RegExp(`^@reboot\\s+"?${slipway}"?\\s+"?${home}"?(\\s+daemon)?$`);
 
         const result = child.spawnSync('crontab', ['-l'], { windowsHide: true });
         if (result.status !== 0) {
@@ -530,7 +535,7 @@ export function verifyAutostart(command: string, args: string) : boolean {
 
         const data = result.stdout.toString();
         for(const line of data.split('\n')) {
-            if (line === record) {
+            if (line.match(pattern)) {
                 return true;
             }
         }
@@ -539,7 +544,8 @@ export function verifyAutostart(command: string, args: string) : boolean {
     }
 }
 
-export function assignAutostart(command: string, args: string) {
+export function assignAutostart(home: string) {
+    const slipway = getModulePath('slipway');
     if (os.platform() === 'win32') {
         var config =
 `<?xml version="1.0" encoding="UTF-16"?>
@@ -586,13 +592,13 @@ export function assignAutostart(command: string, args: string) {
     </Settings>
     <Actions Context="Author">
         <Exec>
-            <Command>${command.replace(/"/g, '&quot;').replace(/'/g, '&apos;')}</Command>
-            <Arguments>${args.replace(/"/g, '&quot;').replace(/'/g, '&apos;')}</Arguments>
+            <Command>${slipway}</Command>
+            <Arguments>${home}</Arguments>
         </Exec>
     </Actions>
 </Task>`.replace(/\r?\n/g, '\r\n');
 
-        const id = utils.makeTextHash(command + args);
+        const id = utils.makeTextHash(slipway + home);
         const xml = os.tmpdir()  + '\\' + id + '.xml';
 
         fs.writeFileSync(xml, config, { encoding: 'utf-8' });
@@ -601,14 +607,15 @@ export function assignAutostart(command: string, args: string) {
             [
                 '-command', 
                 `Start-Process schtasks -ArgumentList '/Create /TN "\\WebPier\\Task #${id}" /XML "${xml}" /HRESULT' -Verb RunAs`
-            ]
+            ],
+            { windowsHide: true }
         );
 
         if (result.status !== 0) {
             throw new Error(result.stderr.toString());
         }
     } else {
-        const record = '@reboot ' + command.replace(/ /g, '\\ ') + ' ' + args;
+        const pattern = new RegExp(`^@reboot\\s+"?${slipway}"?\\s+"?${home}"?(\\s+daemon)?$`);
 
         const list = child.spawnSync('crontab', ['-l'], { windowsHide: true });
         if (list.status !== 0) {
@@ -617,12 +624,12 @@ export function assignAutostart(command: string, args: string) {
 
         const data = list.stdout.toString();
         for(const line of data.split('\n')) {
-            if (line === record) {
+            if (line.match(pattern)) {
                 return;
             }
         }
 
-        const opts: child.SpawnSyncOptions = { input: record + '\n' + data, windowsHide: true  };
+        const opts: child.SpawnSyncOptions = { input: `@reboot "${slipway}" "${home}"\n` + data, windowsHide: true  };
         const edit = child.spawnSync('crontab', opts);
         if (edit.status !== 0) {
             throw new Error(edit.stderr.toString());
@@ -630,29 +637,31 @@ export function assignAutostart(command: string, args: string) {
     }
 }
 
-export function revokeAutostart(command: string, args: string) {
+export function revokeAutostart(home: string) {
+    const slipway = getModulePath('slipway');
     if (os.platform() === 'win32') {
-        const name = fetchTask(command, args);
+        const name = fetchTask(slipway, home);
         if (name !== '') {
             const result = child.spawnSync('powershell',
                 [
                     '-command', 
                     `Start-Process schtasks -ArgumentList '/Delete /TN "${name}" /F /HRESULT' -Verb RunAs`
-                ]
+                ],
+                { windowsHide: true }
             );
             if (result.status !== 0) {
                 throw new Error(result.stderr.toString());
             }
         }
     } else {
-        const record = '@reboot ' + command.replace(/ /g, '\\ ') + ' ' + args;
+        const pattern = new RegExp(`^@reboot\\s+"?${slipway}"?\\s+"?${home}"?(\\s+daemon)?$`);
 
         let list = child.spawnSync('crontab', ['-l'], { windowsHide: true });
         if (list.status !== 0) {
             throw new Error(list.stderr.toString());
         }
 
-        const data = list.stdout.toString().split('\n').filter(line => line !== record);
+        const data = list.stdout.toString().split('\n').filter(line => !line.match(pattern));
 
         const opts: child.SpawnSyncOptions = { input: data.join('\n'), windowsHide: true };
         const edit = child.spawnSync('crontab', opts);

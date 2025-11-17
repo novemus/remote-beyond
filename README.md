@@ -14,7 +14,7 @@ WebPier creates a direct UDP tunnel between hosts and maps the remote TCP servic
 
 ## Requirements
 
-To use the Remote-Beyond extension, you must install the [WebPier](https://github.com/novemus/webpier) application.
+To use the Remote-Beyond extension, you must install the [WebPier >= 1.0.2](https://github.com/novemus/webpier) application.
 
 ## Using
 

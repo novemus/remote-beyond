@@ -7,8 +7,7 @@ export class WebpierContextEditor implements vscode.WebviewViewProvider {
     private config: webpier.Config = new webpier.Config();
     private autostart: boolean = false;
     private callback?: (config: webpier.Config) => void;
-    private command: string = '';
-    private args: string = '';
+    private home: string = '';
 
     constructor(private readonly extensionUri: vscode.Uri) {}
 
@@ -37,9 +36,8 @@ export class WebpierContextEditor implements vscode.WebviewViewProvider {
 
     public setup(home: string, config: webpier.Config, callback: (config: webpier.Config) => void) {
         this.config = config;
-        this.command = webpier.getModulePath('slipway');
-        this.args = `"${home}" daemon`;
-        this.autostart = webpier.verifyAutostart(this.command, this.args);
+        this.home = home;
+        this.autostart = webpier.verifyAutostart(home);
         this.callback = callback;
     }
 
@@ -80,9 +78,9 @@ export class WebpierContextEditor implements vscode.WebviewViewProvider {
             try {
                 if (this.autostart !== context.autostart) {
                     if (context.autostart) {
-                        webpier.assignAutostart(this.command, this.args);
+                        webpier.assignAutostart(this.home);
                     } else {
-                        webpier.revokeAutostart(this.command, this.args);
+                        webpier.revokeAutostart(this.home);
                     }
                 }
             } catch (error) {
