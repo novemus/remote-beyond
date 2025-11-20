@@ -21,7 +21,7 @@ function getHome() : string {
 			}
 		}
 		else if (os.platform() === 'darwin') {
-			home = path.join(os.homedir(), 'Local Settings', 'Application Data', 'webpier');
+			home = path.join(os.homedir(), 'Library', 'Application Support', 'webpier');
 		} else {
 			home= path.join(os.homedir(), '.webpier');
 		}

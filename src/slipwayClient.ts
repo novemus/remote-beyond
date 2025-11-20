@@ -1,5 +1,6 @@
 import * as net from 'net';
 import * as os from 'os';
+import * as fs from 'fs';
 import * as path from 'path';
 import * as child from 'child_process';
 import * as utils  from './utils';
@@ -136,7 +137,7 @@ export class Slipway {
         if (os.platform() === 'win32') {
             this.socket = path.join('\\\\.\\pipe', utils.makeTextHash(home) +'.slipway');
         } else {
-            this.socket = path.join(os.tmpdir(), utils.makeTextHash(home) + '.slipway');
+            this.socket = path.join(fs.existsSync('/tmp') ? '/tmp' : os.tmpdir(), utils.makeTextHash(home) + '.slipway');
         }
     }
 
