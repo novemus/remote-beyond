@@ -191,10 +191,10 @@ class Controller {
 					const item = new WebpierService(fresh.name, fresh.pier, fresh.address, unit.root);
 
 					try {
-						await slipwayClient.adjustService(new slipway.Handle(pier, fresh.name));
-						if (fresh.autostart) {
-							item.setStatus(slipway.Status.Lonely, '', []);
-						}
+						const handle = new slipway.Handle(pier, fresh.name);
+						await slipwayClient.adjustService(handle);
+						const report = await slipwayClient.reviewService(handle);
+						item.setStatus(report.state, report.message, report.tunnels);
 					} catch (err) {
 						item.setStatus(slipway.Status.Broken, (err as Error).name, []);
 						utils.onError(`Could not adjust state of the service. ${err}`);
