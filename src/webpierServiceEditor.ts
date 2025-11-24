@@ -132,7 +132,7 @@ export class WebpierServiceEditor implements vscode.WebviewViewProvider {
                             </tr>
                             <tr id="bootstrapRow" class="${this.service?.rendezvous !== '' ? '' : 'hidden'}">
                                 <td><label for="bootstrap">Bootstrap</label></td>
-                                <td><input type="text" id="bootstrap" name="bootstrap" placeholder="DHT bootstrap hosts" value="${this.service?.rendezvous || ''}"></td>
+                                <td><input type="text" id="bootstrap" name="bootstrap" placeholder="DHT bootstrap hosts" value="${this.service?.rendezvous || webpier.DefaultDhtBootstrap}"></td>
                             </tr>
                             <tr>
                                 <td><label for="autostart">Autostart</label></td>

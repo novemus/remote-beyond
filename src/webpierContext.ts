@@ -49,6 +49,10 @@ export enum Logging {
     Trace
 };
 
+export const DefaultDhtBootstrap: string = 'bootstrap.jami.net';
+export const DefaultStunServer: string = 'stun.ekiga.net';
+export const DefaultGateway: string = '0.0.0.0:0';
+
 export class Journal {
     public folder: string = '';
     public level: Logging = Logging.Debug;
@@ -62,7 +66,7 @@ export class Journal {
 }
 
 export class Nat {
-    public stun: string = 'stun.ekiga.net';
+    public stun: string = DefaultStunServer;
     public hops: number = 7;
     
     static parse(object: any) : Nat {
@@ -74,7 +78,7 @@ export class Nat {
 }
 
 export class Dht {
-    public bootstrap: string = 'bootstrap.jami.net';
+    public bootstrap: string = DefaultDhtBootstrap;
     public port: number = 0;
     
     static parse(object: any) : Dht {
@@ -132,8 +136,8 @@ export class Service {
     public name: string = '';
     public pier: string = '';
     public address: string = '';
-    public gateway: string = '0.0.0.0:0';
-    public rendezvous: string = 'bootstrap.jami.net';
+    public gateway: string = DefaultGateway;
+    public rendezvous: string = DefaultDhtBootstrap;
     public autostart: boolean = false;
     public obscure: boolean = true;
 
