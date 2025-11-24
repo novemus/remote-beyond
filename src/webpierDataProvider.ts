@@ -27,7 +27,13 @@ export class WebpierDataProvider implements vscode.TreeDataProvider<WebpierDataI
             return element.getChildren();
         }
 
-        return Promise.resolve([...this.services.values()]);
+        return Promise.resolve(
+            Array.from(this.services.values()).sort((lhs, rhs) => {
+                const lkey = lhs.name + lhs.address;
+                const rkey = rhs.name + rhs.address;
+                return lkey < rkey ? -1 : rkey === rkey ? 0 : 1; 
+            })
+        );
     }
 
     getParent(element: WebpierDataItem): vscode.ProviderResult<WebpierDataItem> {
