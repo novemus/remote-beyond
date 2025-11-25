@@ -3,9 +3,17 @@
   "displayName": "Remote-Beyond",
   "description": "Forward non-public remote services to the local interface",
   "publisher": "novemus",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "icon": "resources/webpier.png",
   "license": "MIT",
+  "homepage": "https://github.com/novemus/remote-beyond",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/novemus/remote-beyond.git"
+  },
+  "bugs": {
+    "url": "https://github.com/novemus/remote-beyond/issues"
+  },
   "engines": {
     "vscode": "^1.105.0"
   },
