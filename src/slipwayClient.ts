@@ -197,7 +197,19 @@ export class Slipway {
                         windowsHide: true
                     });
                 } else {
-                    return child.spawn('setsid', [slipway, this.home], {
+                    const proc = child.spawn('setsid', [slipway, this.home], {
+                        detached: true,
+                        stdio: 'ignore',
+                        windowsHide: true
+                    });
+
+                    if (proc.pid) {
+                        return proc;
+                    }
+
+                    console.log('Run slipway module directly.');
+
+                    return child.spawn(slipway, [this.home], {
                         detached: true,
                         stdio: 'ignore',
                         windowsHide: true
