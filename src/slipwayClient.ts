@@ -188,36 +188,12 @@ export class Slipway {
         if (this.client) {
             await this.adjustAll();
         } else {
-            const spawnServer = () => {
-                const slipway = webpier.getModulePath('slipway');
-                if (os.platform() === 'win32') {
-                    return child.spawn(slipway, [this.home], {
-                        detached: true,
-                        stdio: 'ignore',
-                        windowsHide: true
-                    });
-                } else {
-                    const proc = child.spawn('setsid', [slipway, this.home], {
-                        detached: true,
-                        stdio: 'ignore',
-                        windowsHide: true
-                    });
-
-                    if (proc.pid) {
-                        return proc;
-                    }
-
-                    console.log('Run slipway module directly.');
-
-                    return child.spawn(slipway, [this.home], {
-                        detached: true,
-                        stdio: 'ignore',
-                        windowsHide: true
-                    });
-                }
-            };
-
-            const server = spawnServer();
+            const slipway = webpier.getModulePath('slipway');
+            const server = child.spawn(slipway, [this.home], {
+                detached: true,
+                stdio: 'ignore',
+                windowsHide: true
+            });
             console.log(`Spawned server with pid: ${server.pid}`);
             server.unref();
         }
