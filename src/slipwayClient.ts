@@ -1,3 +1,4 @@
+import * as vscode from 'vscode';
 import * as net from 'net';
 import * as os from 'os';
 import * as fs from 'fs';
@@ -188,14 +189,28 @@ export class Slipway {
         if (this.client) {
             await this.adjustAll();
         } else {
-            const slipway = webpier.getModulePath('slipway');
-            const server = child.spawn(slipway, [this.home], {
+            const config = vscode.workspace.getConfiguration('remote-beyond');
+            const tray = config.get<boolean>('webpier.keepInTray', false);
+
+            let exec = tray ? webpier.getModulePath('webpier') : webpier.getModulePath('slipway');
+            let args = tray ? ['-t', this.home] : [this.home];
+
+            if (tray && os.platform() === 'darwin') {
+                let app = exec;
+                while (path.basename(app) !== 'WebPier.app') {
+                    app = path.dirname(app);
+                }
+                exec = 'open';
+                args = ['-a', app, '--args', ...args];
+            }
+
+            const proc = child.spawn(exec, args, {
                 detached: true,
                 stdio: 'ignore',
-                windowsHide: true
+                windowsHide: !tray
             });
-            console.log(`Spawned server with pid: ${server.pid}`);
-            server.unref();
+            console.log(`Spawned '${exec} ${args.join(' ')}' with pid: ${proc.pid}`);
+            proc.unref();
         }
     }
 
