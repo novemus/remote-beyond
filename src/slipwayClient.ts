@@ -1,4 +1,3 @@
-import * as vscode from 'vscode';
 import * as net from 'net';
 import * as os from 'os';
 import * as fs from 'fs';
@@ -185,33 +184,41 @@ export class Slipway {
         return message.payload;
     }
 
-    public async launch() {
-        if (this.client) {
-            await this.adjustAll();
-        } else {
-            const config = vscode.workspace.getConfiguration('remote-beyond');
-            const tray = config.get<boolean>('webpier.keepInTray', false);
+    public launchBackend() {
+        let exec = webpier.getModulePath('slipway');
+        let args = [this.home];
 
-            let exec = tray ? webpier.getModulePath('webpier') : webpier.getModulePath('slipway');
-            let args = tray ? ['-t', this.home] : [this.home];
+        const proc = child.spawn(exec, [this.home], {
+            detached: true,
+            stdio: 'ignore',
+            windowsHide: true
+        });
 
-            if (tray && os.platform() === 'darwin') {
-                let app = exec;
-                while (path.basename(app) !== 'WebPier.app') {
-                    app = path.dirname(app);
-                }
-                exec = 'open';
-                args = ['-a', app, '--args', ...args];
+        console.log(`Spawned '${exec} ${args.join(' ')}' with pid: ${proc.pid}`);
+        proc.unref();
+    }
+
+    public launchTray() {
+        let exec = webpier.getModulePath('webpier');
+        let args = ['-t', this.home];
+
+        if (os.platform() === 'darwin') {
+            let app = exec;
+            while (path.basename(app) !== 'WebPier.app') {
+                app = path.dirname(app);
             }
-
-            const proc = child.spawn(exec, args, {
-                detached: true,
-                stdio: 'ignore',
-                windowsHide: !tray
-            });
-            console.log(`Spawned '${exec} ${args.join(' ')}' with pid: ${proc.pid}`);
-            proc.unref();
+            exec = 'open';
+            args = ['-a', app, '--args', ...args];
         }
+
+        const proc = child.spawn(exec, args, {
+            detached: true,
+            stdio: 'ignore',
+            windowsHide: false
+        });
+
+        console.log(`Spawned '${exec} ${args.join(' ')}' with pid: ${proc.pid}`);
+        proc.unref();
     }
 
     public async unplugAll() : Promise<void> {

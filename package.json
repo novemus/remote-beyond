@@ -46,7 +46,7 @@
             "order": 3,
             "type": "boolean",
             "default": true,
-            "description": "Keep the WebPier application in the system tray. If the WebPier backend is not configured to run as daemon for the context, this option will avoid shutting down and restarting it along with VS Code.",
+            "description": "Keep the WebPier application in the system tray. If the context backend is not configured for autostart, this will avoid shutting down and restarting it along with VS Code.",
             "scope": "machine"
           }
         }

@@ -84,6 +84,18 @@ class Controller {
 		}
 	}
 
+	runServer(ever: boolean)  {
+		const config = vscode.workspace.getConfiguration('remote-beyond');
+		const tray = config.get<boolean>('webpier.keepInTray', false);
+		if (tray || ever) {
+			if (tray) {
+			 	this.slipwayClient.launchTray();
+			} else {
+				this.slipwayClient.launchBackend();
+			}
+		}
+	}
+
 	async initialize(pier?: string) : Promise<void> {
 		try {
 			if (pier) {
@@ -95,7 +107,16 @@ class Controller {
 				}
 				await this.webpierContext.load();
 			}
-			await this.slipwayClient.launch();
+
+			this.runServer(true);
+
+			const controller = this;
+			this.context.subscriptions.push(vscode.workspace.onDidChangeConfiguration(async (event: vscode.ConfigurationChangeEvent) => {
+				if (event.affectsConfiguration('remote-beyond.webpier.keepInTray')) {
+					controller.runServer(false);
+				}
+			}));
+
 			this.importTree.rebuild();
 			this.exportTree.rebuild();
 			this.importTree.refresh();
