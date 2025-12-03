@@ -12,3 +12,10 @@ vsc-extension-quickstart.md
 **/*.map
 **/*.ts
 **/.vscode-test.*
+resources/welcome.png
+resources/context.png
+resources/service.png
+resources/export.png
+resources/import.png
+resources/dropdown.png
+resources/buttons.png

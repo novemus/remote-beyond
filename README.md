@@ -20,19 +20,19 @@ To use the Remote-Beyond extension, you must install the [WebPier >= 1.0.2](http
 
 On the first start, you will be prompted to define the local *Pier* identity.
 
-![welcome](resources/welcome.png)
+![welcome](https://raw.githubusercontent.com/novemus/remote-beyond/master/resources/welcome.png)
 
 It consists of two parts. The first is an *Owner* identifier, which should be your email address if you want to use email as the rendezvous service in addition to DHT. The second is a *Host* identifier, which must be unique for the *Owner*. After providing the identifiers, a pair of cryptographic keys will be generated to protect rendezvous communications. By default, the Remote-Beyond context home directory is linked to the default WebPier context home. You can change it in the User scope of the VSCode configuration.
 
 You may change the context settings by the `Remote-Beyond: Edit context` command:
 
-![settings](resources/context.png)
+![settings](https://raw.githubusercontent.com/novemus/remote-beyond/master/resources/context.png)
 
 You must specify an accessible STUN server, DHT bootstrap server, or your email account as a rendezvous. Select the *Autostart* option if you want to start WebPier backend as a daemon on system startup. Otherwise, the backend will up and down together with the client.
 
 Create one or more export services on the server machine by the `Remote-Beyond: Add export service` command:
 
-![service](resources/service.png)
+![service](https://raw.githubusercontent.com/novemus/remote-beyond/master/resources/service.png)
 
 * **Service** - the name of the service to refer to it in rendezvous
 * **Pier** - list of remote piers to export to, or remote pier to import from the service
@@ -47,19 +47,19 @@ If you haven't adopted any *Pier* to your server yet, leave the *Pier* field emp
 
 After that, you have to create an *offer* for the client-side. Invoke the `Remote-Beyond: Create an offer...` command, select services you want to export, and save the offer file. The offer will also contain the public key of your *Pier*.
 
-![share](resources/export.png)
+![share](https://raw.githubusercontent.com/novemus/remote-beyond/master/resources/export.png)
 
 Move the *offer* to your client machine, load it by the `Remote-Beyond: Upload an offer...` command, choose from offered services that you want to import, and assign addresses for them.
 
-![adopt](resources/import.png)
+![adopt](https://raw.githubusercontent.com/novemus/remote-beyond/master/resources/import.png)
 
 Now create a counter *offer* for the server machine. Move it there and load it. Finally, you must specify the adopted *Pier* in the configuration of services you want to export.
 
-![adopt](resources/dropdown.png)
+![adopt](https://raw.githubusercontent.com/novemus/remote-beyond/master/resources/dropdown.png)
 
 Once you have exchanged offers, you can configure services manually. Now you can manage the services by the Remote-Beyond palette commands or by buttons on the sidebar views:
 
-![adopt](resources/buttons.png)
+![adopt](https://raw.githubusercontent.com/novemus/remote-beyond/master/resources/buttons.png)
 
 ## Home
 
