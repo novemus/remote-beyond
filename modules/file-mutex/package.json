@@ -1,0 +1,24 @@
+{
+  "name": "file-mutex",
+  "version": "1.0.0",
+  "description": "N-API file locking module compatible with boost::interprocess",
+  "main": "index.ts",
+  "typings": "index.d.ts",
+  "gypfile": true,
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "build/Release/file-mutex.node"
+  ],
+  "scripts": {
+    "build": "node-gyp rebuild",
+    "prebuild": "rimraf build"
+  },
+  "dependencies": {
+    "node-addon-api": "^8.5.0"
+  },
+  "devDependencies": {
+    "node-gyp": "^10.3.1",
+    "rimraf": "^5.0.5"
+  }
+}

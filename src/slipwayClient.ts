@@ -208,7 +208,7 @@ export class Slipway {
                 app = path.dirname(app);
             }
             exec = 'open';
-            args = ['-a', app, '--args', ...args];
+            args = ['-n', '-a', app, '--args', ...args];
         }
 
         const proc = child.spawn(exec, args, {

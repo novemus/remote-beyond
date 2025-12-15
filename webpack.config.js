@@ -23,12 +23,9 @@ const extensionConfig = {
     vscode: 'commonjs vscode' // the vscode-module is created on-the-fly and must be excluded. Add other modules that cannot be webpack'ed, 📖 -> https://webpack.js.org/configuration/externals/
     // modules added here also need to be added in the .vscodeignore file
   },
-    resolve: {
+  resolve: {
       // support reading TypeScript and JavaScript files, 📖 -> https://github.com/TypeStrong/ts-loader
-      extensions: ['.ts', '.js', '.node'],
-      alias: {
-          './build/Release/fs-ext': './build/Release/fs-ext.node'
-      }
+      extensions: ['.ts', '.js']
   },
   module: {
     rules: [
@@ -39,9 +36,9 @@ const extensionConfig = {
           {
             loader: 'ts-loader',
             options: {
-                compilerOptions: {
-                    "module": "es6" // override `tsconfig.json` so that TypeScript emits native JavaScript modules.
-                }
+              compilerOptions: {
+                "module": "es6" // override `tsconfig.json` so that TypeScript emits native JavaScript modules.
+              }
             }
           }
         ]
@@ -55,6 +52,6 @@ const extensionConfig = {
   devtool: 'nosources-source-map',
   infrastructureLogging: {
     level: "log", // enables logging required for problem matchers
-  },
+  }
 };
 module.exports = [ extensionConfig ];

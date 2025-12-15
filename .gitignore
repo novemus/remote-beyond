@@ -1,6 +1,10 @@
 out
 dist
 node_modules
-.vscode-test/
+build
+.vscode-test
 *.vsix
-.webpier
+package-lock.json
+modules/file-mutex/build
+modules/file-mutex/node_modules
+modules/file-mutex/package-lock.json

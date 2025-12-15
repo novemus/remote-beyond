@@ -2,42 +2,10 @@ import * as vscode from 'vscode';
 import * as os from 'os';
 import * as child from 'child_process';
 import * as fs from 'fs';
-import * as ext from 'fs-ext';
 import * as forge from 'node-forge';
 import * as reg from '@vscode/windows-registry';
-import * as utils  from './utils';
-
-export class StaleContext extends Error {
-    public cause: string = 'stale webpier context';
-}
-
-class Locker {
-    private fd: number;
-    private mtime: Date;
-
-    constructor(file: string) {
-        this.fd = fs.openSync(file, 'w');
-        this.mtime = fs.fstatSync(this.fd).mtime;
-    }
-
-    hardLock() {
-        ext.flockSync(this.fd, 'ex');
-        if (fs.fstatSync(this.fd).mtime.toISOString() !== this.mtime.toISOString()) {
-            throw new StaleContext();
-        }
-        this.mtime = new Date();
-        fs.futimesSync(this.fd, this.mtime, this.mtime);
-    }
-
-    softLock() {
-        ext.flockSync(this.fd, 'sh');
-        this.mtime = fs.fstatSync(this.fd).mtime;
-    }
-
-    release() {
-        ext.flockSync(this.fd, 'un');
-    }
-}
+import * as utils from './utils';
+import { FileMutex } from '../modules/file-mutex';
 
 export enum Logging {
     None,
@@ -188,13 +156,13 @@ export class Offer {
 export class Context {
     private config: Config = new Config();
     private services: Map<string, Service[]> = new Map<string, Service[]>();
-    private locker: Locker;
+    private locker: FileMutex;
 
     constructor(private home: string) {
         if (!fs.existsSync(this.home)) {
 			fs.mkdirSync(this.home, { recursive: true });
 		}
-        this.locker = new Locker(this.home + '/webpier.lock');
+        this.locker = new FileMutex(this.home + '/webpier.lock');
     }
 
     public async init(pier: string) {
@@ -205,13 +173,8 @@ export class Context {
 
         if (fs.existsSync(this.config.repo + '/' + pier + '/private.key')) {
             this.locker.hardLock();
-            try {
-                await utils.writeJsonFile(this.home + '/webpier.json', this.config);
-                this.locker.release();
-            } catch (err) {
-                this.locker.release();
-                throw err;
-            }
+            await utils.writeJsonFile(this.home + '/webpier.json', this.config);
+            this.locker.freeLock();
             await this.load();
         } else {
             this.config.log.folder = this.home + '/journal';
@@ -242,15 +205,13 @@ export class Context {
             fs.mkdirSync(this.config.log.folder, { recursive: true });
 
             this.locker.hardLock();
+            await utils.writeJsonFile(this.home + '/webpier.json', this.config);
             try {
-                await utils.writeJsonFile(this.home + '/webpier.json', this.config);
                 fs.mkdirSync(this.config.repo + '/' + pier, { recursive: true });
                 fs.writeFileSync(this.config.repo + '/' + pier + '/cert.crt', forge.pki.certificateToPem(cert));
-                fs.writeFileSync(this.config.repo + '/' + pier + '/private.key', forge.pki.privateKeyToPem(privateKey));
-                this.locker.release();
-            } catch (err) {
-                this.locker.release();
-                throw err;
+                fs.writeFileSync(this.config.repo + '/' + pier + '/private.key', forge.pki.privateKeyToPem(privateKey), { mode: 0o600 });
+            } finally {
+                this.locker.freeLock();
             }
         }
     }
@@ -277,25 +238,15 @@ export class Context {
                     }
                 }
             }
-            this.locker.release();
-        } catch (err) {
-            this.locker.release();
-            throw err;
+        } finally {
+            this.locker.freeLock();
         }
     }
 
     public async refresh() : Promise<boolean> {
-        try {
-            this.locker.hardLock();
-            this.locker.release();
-
-        } catch (err) {
-            this.locker.release();
-            if (err instanceof StaleContext) {
-                await this.load();
-                return true;
-            }
-            throw err;
+        if (!this.locker.testTime()) {
+            await this.load();
+            return true;
         }
         return false;
     }
@@ -318,10 +269,8 @@ export class Context {
             this.locker.hardLock();
             try {
                 await utils.writeJsonFile(this.home + '/webpier.json', this.config);
-                this.locker.release();
-            } catch (err) {
-                this.locker.release();
-                throw err;
+            } finally {
+                this.locker.freeLock();
             }
         }
     }
@@ -382,10 +331,8 @@ export class Context {
             this.locker.hardLock();
             try {
                 await utils.writeJsonFile(this.config.repo + '/' + pier + '/webpier.json', { services });
-                this.locker.release();
-            } catch (err) {
-                this.locker.release();
-                throw err;
+            } finally {
+                this.locker.freeLock();
             }
         } else {
             throw new Error('Unknown pier');
@@ -400,10 +347,8 @@ export class Context {
             this.locker.hardLock();
             try {
                 await utils.writeJsonFile(this.config.repo + '/' + pier + '/webpier.json', { services });
-                this.locker.release();
-            } catch (err) {
-                this.locker.release();
-                throw err;
+            } finally {
+                this.locker.freeLock();
             }
         }
     }
@@ -426,10 +371,8 @@ export class Context {
             try {
                 fs.mkdirSync(dir, { recursive: true });
                 fs.writeFileSync(dir + '/cert.crt', cert);
-                this.locker.release();
-            } catch (err) {
-                this.locker.release();
-                throw err;
+            } finally {
+                this.locker.freeLock();
             }
         } else {
             throw new Error('Wrong pier');
@@ -445,10 +388,8 @@ export class Context {
             this.locker.hardLock();
             try {
                 fs.rmSync(dir, { recursive: true, force: true });
-                this.locker.release();
-            } catch (err) {
-                this.locker.release();
-                throw err;
+            } finally {
+                this.locker.freeLock();
             }
         }
     }
