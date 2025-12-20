@@ -388,6 +388,7 @@ export class Context {
             this.locker.hardLock();
             try {
                 fs.rmSync(dir, { recursive: true, force: true });
+                this.services.delete(pier);
             } finally {
                 this.locker.freeLock();
             }

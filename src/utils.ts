@@ -3,48 +3,60 @@ import * as path from 'path';
 import * as fs from 'fs/promises';
 
 const NETWORK_NAME_PATTERN = /^[a-zA-Z0-9\u0080-\uFFFF]([a-zA-Z0-9\u0080-\uFFFF-]*[a-zA-Z0-9\u0080-\uFFFF])?$/;
-const IPv4_ENDPOINT_PATTERN = /^((25[0-5]|(2[0-4]|1\d|[1-9]|)\d)\.?\b){4}\:(([1-9][0-9]{0,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])|(0))$/;
-const IPv6_ENDPOINT_PATTERN = /^\[((25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])\.(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])\.(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])\.(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])|(([0-9A-Fa-f]{1,4}:){7}[0-9A-Fa-f]{1,4}|([0-9A-Fa-f]{1,4}:){1,7}:|:(:[0-9A-Fa-f]{1,4}){1,7}|([0-9A-Fa-f]{1,4}:){1,6}:[0-9A-Fa-f]{1,4}|([0-9A-Fa-f]{1,4}:){1,5}(:[0-9A-Fa-f]{1,4}){1,2}|([0-9A-Fa-f]{1,4}:){1,4}(:[0-9A-Fa-f]{1,4}){1,3}|([0-9A-Fa-f]{1,4}:){1,3}(:[0-9A-Fa-f]{1,4}){1,4}|([0-9A-Fa-f]{1,4}:){1,2}(:[0-9A-Fa-f]{1,4}){1,5}|[0-9A-Fa-f]{1,4}:(:[0-9A-Fa-f]{1,4}){1,6}|:(:[0-9A-Fa-f]{1,4}){1,6}))\]\:(([1-9][0-9]{0,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])|(0))$/;
 const PIER_NAME_PART_PATTERN = /^(?!\\.)(?!com[0-9]$)(?!con$)(?!lpt[0-9]$)(?!nul$)(?!prn$)[^\s\\|\\*\?\\:<>\/$"]*[^\\.\\|\\*\\?\\\:<>\/\s$"]+$/;
 
 export function isIPv4Endpoint(text: string): boolean {
-    return IPv4_ENDPOINT_PATTERN.test(text);
-}
+    if (!text) {
+        return false;
+    }
 
-export function isIPv6Endpoint(text: string): boolean {
-    return IPv6_ENDPOINT_PATTERN.test(text);
+    const parts = text.trim().split(':');
+    if (parts.length !== 2) {
+        return false;
+    }
+
+    return isValidIPv4(parts[0]) && isValidPort(parts[1]);
 }
 
 export function isNetworkEndpoint(text: string): boolean {
-    const colonIndex = text.lastIndexOf(':');
-    if (colonIndex === -1) {
-        return isValidHostname(text);
-    }
-    const hostname = text.substring(0, colonIndex);
-    const portStr = text.substring(colonIndex + 1);
-    if (!isValidHostname(hostname)) {
+    if (!text || text.trim() === '') {
         return false;
     }
-    const port = parseInt(portStr, 10);
-    return !isNaN(port) && port >= 0 && port <= 65535;
+
+    const trimmed = text.trim();
+
+    if (trimmed.startsWith('[')) {
+        const closingBracket = trimmed.indexOf(']');
+        if (closingBracket === -1) {
+            return false;
+        }
+
+        const ipPart = trimmed.slice(1, closingBracket);
+        const portPart = trimmed.slice(closingBracket + 1);
+
+        if (!isValidIPv6(ipPart)) {
+            return false;
+        }
+
+        return portPart === '' || (portPart.startsWith(':') && isValidPort(portPart.slice(1)));
+    }
+
+    const lastColonIndex = trimmed.lastIndexOf(':');
+    if (lastColonIndex === -1) {
+        return isValidHostname(trimmed) || isValidIPv4(trimmed);
+    }
+
+    const host = trimmed.slice(0, lastColonIndex);
+    const portStr = trimmed.slice(lastColonIndex + 1);
+
+    if (!isValidPort(portStr)) {
+        return false;
+    }
+
+    return isValidHostname(host) || isValidIPv4(host);
 }
 
-export function isNetworkEndpointList(text: string): boolean {
-    const list = text.split(',');
-    return list.length > 1
-        ? list.find(item => !isNetworkEndpoint(item)) === undefined 
-        : text.split(';').find(item => !isNetworkEndpoint(item)) === undefined;
-}
-
-export function isValidPeirNamePart(text: string): boolean {
-    return PIER_NAME_PART_PATTERN.test(text);
-}
-
-export function isValidPeirName(text: string): boolean {
-    return PIER_NAME_PART_PATTERN.test(prefix(text, '/')) && PIER_NAME_PART_PATTERN.test(postfix(text, '/'));
-}
-
-export function isValidHostname(name: string): boolean {
+function isValidHostname(name: string): boolean {
     if (name.length === 0 || name.length > 253) {
         return false;
     }
@@ -58,6 +70,50 @@ export function isValidHostname(name: string): boolean {
         }
     }
     return true;
+}
+
+function isValidPort(portStr: string): boolean {
+    const port = parseInt(portStr, 10);
+    return !isNaN(port) && port >= 0 && port <= 65535;
+}
+
+function isValidIPv4(ip: string): boolean {
+    const parts = ip.split('.');
+    if (parts.length !== 4) {
+        return false;
+    }
+    return parts.every(part => isValidIPv4Octet(part));
+}
+
+function isValidIPv6(ip: string): boolean {
+    const regex = /^(([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]))$/;
+    return regex.test(ip);
+}
+
+function isValidIPv4Octet(octet: string): boolean {
+    if (octet === '') {
+        return false;
+    }
+    if (octet.length > 1 && octet[0] === '0') {
+        return false;
+    }
+    const num = parseInt(octet, 10);
+    return num >= 0 && num <= 255;
+}
+
+export function isNetworkEndpointList(text: string): boolean {
+    const list = text.split(',');
+    return list.length > 1
+        ? list.find(item => !isNetworkEndpoint(item)) === undefined 
+        : text.split(';').find(item => !isNetworkEndpoint(item)) === undefined;
+}
+
+export function isValidPierNamePart(text: string): boolean {
+    return PIER_NAME_PART_PATTERN.test(text);
+}
+
+export function isValidPierName(text: string): boolean {
+    return isValidPierNamePart(prefix(text, '/')) && isValidPierNamePart(postfix(text, '/'));
 }
 
 export function onError(info: string) {
@@ -111,7 +167,7 @@ export async function writeJsonFile(file: string, data: any): Promise<void> {
 
 export function prefix(line: string, delim: string) : string {
     const pos = line.indexOf(delim);
-    return pos === -1 ? line : line.substring(0, line.indexOf(delim));
+    return pos === -1 ? line : line.substring(0, pos);
 }
 
 export function postfix(line: string, delim: string) : string {

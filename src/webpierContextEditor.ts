@@ -43,11 +43,11 @@ export class WebpierContextEditor implements vscode.WebviewViewProvider {
 
     private async handleFormSubmit(context: any) {
         if(this.callback) {
-            if(!utils.isValidPeirNamePart(utils.prefix(context.pier, '/'))) {
+            if(!utils.isValidPierNamePart(utils.prefix(context.pier, '/'))) {
                 vscode.window.showErrorMessage('Invalid \'Owner\' value!');
                 return;
             }
-            if(!utils.isValidPeirNamePart(utils.postfix(context.pier, '/')))  {
+            if(!utils.isValidPierNamePart(utils.postfix(context.pier, '/')))  {
                 vscode.window.showErrorMessage('Invalid \'Pier\' value!');
                 return;
             }

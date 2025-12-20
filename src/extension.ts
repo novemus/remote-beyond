@@ -64,7 +64,7 @@ class Controller {
 			placeHolder: 'Enter the Owner identifier',
 			prompt: 'Assign your email address to be able to employ the Email rendezvous.',
 			validateInput: text => {
-				return utils.isValidPeirNamePart(text) ? null : 'Don\'t use the symbols prohibited by file systems and gaps.';
+				return utils.isValidPierNamePart(text) ? null : 'Don\'t use the symbols prohibited by file systems and gaps.';
 			}
 		});
 
@@ -73,7 +73,7 @@ class Controller {
 			placeHolder: 'Enter the Host identifier',
 			prompt: 'The Host identifier must be unique for the Owner.',
 			validateInput: text => {
-				return utils.isValidPeirNamePart(text) ? null : 'Don\'t use the symbols prohibited by file systems and gaps.';
+				return utils.isValidPierNamePart(text) ? null : 'Don\'t use the symbols prohibited by file systems and gaps.';
 			}
 		});
 

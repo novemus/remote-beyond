@@ -1,14 +1,12 @@
-"use strict";
-
 const mutex = require('./build/Release/file-mutex.node');
 
-export class StaleContext extends Error {
+class StaleContext extends Error {
   constructor() {
     super('stale context');
   }
 }
 
-export class FileMutex
+class FileMutex
 {
   constructor(path) {
     this.path = path;
@@ -71,3 +69,5 @@ export class FileMutex
     }
   }
 }
+
+module.exports = { FileMutex, StaleContext };

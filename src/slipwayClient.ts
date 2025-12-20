@@ -3,202 +3,245 @@ import * as os from 'os';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as child from 'child_process';
-import * as utils  from './utils';
+import * as utils from './utils';
 import * as webpier from './webpierContext';
 
-export class Handle {
-    constructor(public readonly pier: string, public readonly service: string) {
-    }
-
-    static parseOne(data: any) : Handle {
-        return new Handle(data.pier, data.service);
-    }
-
-    static parseArray(data: any) : Handle[] {
-        const arr: Handle[] = [];
-        for (const item of data) {
-            arr.push(new Handle(item.pier, item.service));
-        }
-        return arr;
-    }
+export const enum Command {
+    Naught = 0,
+    Unplug = 1,
+    Engage = 2,
+    Adjust = 3,
+    Status = 4,
+    Review = 5
 }
 
-export enum Status {
+export const enum Status {
     Asleep,
     Broken,
     Lonely,
     Burden
-};
+}
+
+export class Handle {
+    constructor(public readonly pier: string, public readonly service: string) {}
+
+    static parseOne(data: any): Handle {
+        return new Handle(data.pier, data.service);
+    }
+
+    static parseArray(data: any[]): Handle[] {
+        return data.map(Handle.parseOne);
+    }
+}
 
 export class Health {
-    constructor(public readonly pier: string, public readonly service: string, public readonly state: Status, public readonly message: string) {
+    constructor(
+        public readonly pier: string,
+        public readonly service: string,
+        public readonly state: Status,
+        public readonly message: string
+    ) {}
+
+    static parseOne(data: any): Health {
+        return new Health(data.pier, data.service, data.state, data.message);
     }
 
-    static parseOne(data: any) : Health {
-        return new Health(data.pier, data.service, parseInt(data.state) as Status, data.message);
-    }
-
-    static parseArray(data: any) : Health[] {
-        const arr: Health[] = [];
-        for (const item of data) {
-            arr.push(new Health(item.pier, item.service, parseInt(item.state) as Status, item.message));
-        }
-        return arr;
+    static parseArray(data: any[]): Health[] {
+        return data.map(Health.parseOne);
     }
 }
 
 export class Tunnel {
-    constructor(public readonly pier: string, public readonly pid: number) {
-    }
+    constructor(public readonly pier: string, public readonly pid: number) {}
 
-    static parseOne(data: any) : Tunnel {
+    static parseOne(data: any): Tunnel {
         return new Tunnel(data.pier, parseInt(data.pid));
     }
 
-    static parseArray(data: any) : Tunnel[] {
-        const arr: Tunnel[] = [];
-        for (const item of data) {
-            arr.push(new Tunnel(item.pier, parseInt(item.pid)));
-        }
-        return arr;
+    static parseArray(data: any[]): Tunnel[] {
+        return data.map(Tunnel.parseOne);
     }
 }
 
 export class Report {
-    constructor(public readonly pier: string, public readonly service: string, public readonly state: Status, public readonly message: string, public readonly tunnels: Tunnel[]) {
-    }
+    constructor(
+        public readonly pier: string,
+        public readonly service: string,
+        public readonly state: Status,
+        public readonly message: string,
+        public readonly tunnels: Tunnel[]
+    ) {}
 
-    static parseOne(data: any) : Report {
+    static parseOne(data: any): Report {
         return new Report(
-            data.pier, data.service, parseInt(data.state) as Status, data.message, Array.isArray(data.tunnels) ? Tunnel.parseArray(data.tunnels) : []
+            data.pier,
+            data.service,
+            parseInt(data.state) as Status,
+            data.message,
+            Array.isArray(data.tunnels) ? Tunnel.parseArray(data.tunnels) : []
         );
     }
 
-    static parseArray(data: any) : Report[] {
-        const arr: Report[] = [];
-        for (const item of data) {
-            arr.push(new Report(item.pier, item.service, parseInt(item.state) as Status, item.message, Array.isArray(item.tunnels) ? Tunnel.parseArray(item.tunnels) : []));
-        }
-        return arr;
+    static parseArray(data: any[]): Report[] {
+        return data.map(Report.parseOne);
     }
-};
-
-enum Command {
-    Naught,
-    Unplug,
-    Engage,
-    Adjust,
-    Status,
-    Review
-};
+}
 
 class Message {
-    public action: Command = Command.Naught;
-    public payload: any = '';
+    constructor(
+        public readonly action: Command,
+        public readonly payload?: any
+    ) {}
 
-    constructor(action: Command, payload?: any) {
-        this.action = action;
-        this.payload = payload ? payload : '';
-    }
-
-    public ok(): boolean {
+    get ok(): boolean {
         return this.action !== Command.Naught && (typeof this.payload !== 'string' || this.payload.toString() === '');
     }
 
-    static pack(msg: Message) : string {
-        const data : any = {};
-        data.action = msg.action;
-        if (msg.payload !== '') {
-            data.handle = msg.payload;
+    static pack(msg: Message): string {
+        const data: any = { action: msg.action };
+        if (msg.payload !== undefined) {
+            if (msg.payload instanceof Handle) {
+                data.handle = msg.payload;
+            }
         }
         return JSON.stringify(data) + '\n';
     }
 
-    static parse(str: string) : Message {
-        const info = JSON.parse(str);
-        if (info.error) {
-            return new Message(parseInt(info.action) as Command, info.error);
-        } else if (info.handle) {
-            return new Message(parseInt(info.action) as Command, Array.isArray(info.handle) ? Handle.parseArray(info.handle) : Handle.parseOne(info.handle));
-        } else if (info.health) {
-            return new Message(parseInt(info.action) as Command, Array.isArray(info.health) ? Health.parseArray(info.health) : Health.parseOne(info.health));
-        } else if (info.report) {
-            return new Message(parseInt(info.action) as Command, Array.isArray(info.report) ? Report.parseArray(info.report) : Report.parseOne(info.report));
+    static parse(str: string): Message {
+        let info: any;
+        try {
+            info = JSON.parse(str);
+        } catch (err) {
+            return new Message(Command.Naught, 'Invalid JSON received');
         }
-        return new Message(parseInt(info.action) as Command);
+
+        const action = parseInt(info.action) as Command;
+        if (!action) {
+            return new Message(Command.Naught, 'Invalid command');
+        }
+
+        if (info.error) {
+            return new Message(action, info.error);
+        } else if (info.health && action === Command.Status) {
+            const healths = Array.isArray(info.health)
+                ? Health.parseArray(info.health)
+                : Health.parseOne(info.health);
+            return new Message(action, healths);
+        } else if (info.report && action === Command.Review) {
+            const reports = Array.isArray(info.report)
+                ? Report.parseArray(info.report)
+                : Report.parseOne(info.report);
+            return new Message(action, reports);
+        }
+
+        return new Message(action);
     }
-};
+}
 
 export class Slipway {
-    private socket: string = '';
-    private client?: net.Socket;
+    private readonly socketPath: string;
+    private client: net.Socket | null = null;
 
-    constructor(private home: string) {
+    constructor(private readonly home: string) {
+        const hash = utils.makeTextHash(home);
         if (os.platform() === 'win32') {
-            this.socket = path.join('\\\\.\\pipe', utils.makeTextHash(home) +'.slipway');
+            this.socketPath = `\\\\.\\pipe\\${hash}.slipway`;
         } else {
-            this.socket = path.join(fs.existsSync('/tmp') ? '/tmp' : os.tmpdir(), utils.makeTextHash(home) + '.slipway');
+            const tmpDir = fs.existsSync('/tmp') ? '/tmp' : os.tmpdir();
+            this.socketPath = path.join(tmpDir, `${hash}.slipway`);
         }
     }
 
-    private async createClient(): Promise<net.Socket> {
+    private async getClient(): Promise<net.Socket> {
+        if (this.client && !this.client.destroyed) {
+            return this.client;
+        }
+
         return new Promise((resolve, reject) => {
-            const client = net.createConnection({ path: this.socket, timeout: 10000 }, () => {
-                console.log('Connected to socket');
+            const client = net.createConnection({ path: this.socketPath }, () => {
+                this.client = client;
                 resolve(client);
             });
 
-            client.on('error', (err: Error) => {
-                console.error('Could not connect to socket:', err.message);
+            client.once('error', (err) => {
+                client.destroy();
+                console.error('Socket connection failed:', err.message);
                 reject(err);
             });
         });
     }
 
-    private async request(outcome: Message) : Promise<Message> {
-        if (!this.client) {
-            this.client = await this.createClient();
-        }
-        const client = this.client;
+    private async request(message: Message): Promise<Message> {
+        const client = await this.getClient();
+
         return new Promise((resolve, reject) => {
-            client.write(Message.pack(outcome), (err?: Error | null) => {
+            const cleanup = () => {
+                client.removeListener('data', onData);
+                client.removeListener('error', onError);
+                client.removeListener('close', onClose);
+            };
+
+            const onData = (data: Buffer) => {
+                cleanup();
+                try {
+                    resolve(Message.parse(data.toString()));
+                } catch (err) {
+                    reject(new Error(`Parse error: ${(err as Error).message}`));
+                }
+            };
+
+            const onError = (err: Error) => {
+                cleanup();
+                reject(err);
+            };
+
+            const onClose = () => {
+                if (this.client === client) {
+                    this.client = null;
+                }
+            };
+
+            client.on('data', onData);
+            client.on('error', onError);
+            client.on('close', onClose);
+
+            client.write(Message.pack(message), (err) => {
                 if (err) {
+                    cleanup();
                     reject(err);
-                } else {
-                    client.once('data', (data: Buffer) => {
-                        resolve(Message.parse(data.toString()));
-                    });
-                    client.once('error', (err: Error) => {
-                        reject(err);
-                    });
                 }
             });
         });
     }
 
-    private async performRequest(action: Command, payload?: any) {
-        const message = await this.request(new Message(action, payload));
-        if (!message.ok()) {
-            throw new Error(message.payload.toString());
+    private async performRequest<T>(action: Command, payload?: any): Promise<T> {
+        const response = await this.request(new Message(action, payload));
+        if (!response.ok) {
+            throw new Error(response.payload?.toString() || 'Unknown error');
         }
-        return message.payload;
+        if (response.action !== action) {
+            throw new Error(`Unexpected response ${response.action}`);
+        }
+        return response.payload as T;
     }
 
-    public launchBackend() {
-        let exec = webpier.getModulePath('slipway');
-        let args = [this.home];
-
-        const proc = child.spawn(exec, [this.home], {
+    private spawnProcess(exec: string, args: string[], hide: boolean): void {
+        const proc = child.spawn(exec, args, {
             detached: true,
             stdio: 'ignore',
-            windowsHide: true
+            windowsHide: hide
         });
 
         console.log(`Spawned '${exec} ${args.join(' ')}' with pid: ${proc.pid}`);
         proc.unref();
     }
 
-    public launchTray() {
+    public launchBackend(): void {
+        const exec = webpier.getModulePath('slipway');
+        this.spawnProcess(exec, [this.home], true);
+    }
+
+    public launchTray(): void {
         let exec = webpier.getModulePath('webpier');
         let args = ['-t', this.home];
 
@@ -211,53 +254,46 @@ export class Slipway {
             args = ['-n', '-a', app, '--args', ...args];
         }
 
-        const proc = child.spawn(exec, args, {
-            detached: true,
-            stdio: 'ignore',
-            windowsHide: false
-        });
-
-        console.log(`Spawned '${exec} ${args.join(' ')}' with pid: ${proc.pid}`);
-        proc.unref();
+        this.spawnProcess(exec, args, false);
     }
 
-    public async unplugAll() : Promise<void> {
-        await this.performRequest(Command.Unplug);
+    public async unplugAll(): Promise<void> {
+        await this.performRequest<void>(Command.Unplug);
     }
 
-    public async engageAll() : Promise<void> {
-        await this.performRequest(Command.Engage);
+    public async engageAll(): Promise<void> {
+        await this.performRequest<void>(Command.Engage);
     }
 
-    public async adjustAll() : Promise<void> {
-        await this.performRequest(Command.Adjust);
+    public async adjustAll(): Promise<void> {
+        await this.performRequest<void>(Command.Adjust);
     }
 
-    public async statusAll() : Promise<Health[]> {
-        return await this.performRequest(Command.Status);
+    public async statusAll(): Promise<Health[]> {
+        return await this.performRequest<Health[]>(Command.Status);
     }
 
-    public async reviewAll() : Promise<Report[]> {
-        return await this.performRequest(Command.Review);
+    public async reviewAll(): Promise<Report[]> {
+        return await this.performRequest<Report[]>(Command.Review);
     }
 
-    public async unplugService(service: Handle) : Promise<void> {
-        this.performRequest(Command.Unplug, service);
+    public async unplugService(service: Handle): Promise<void> {
+        await this.performRequest<void>(Command.Unplug, service);
     }
 
-    public async engageService(service: Handle) : Promise<void> {
-        await this.performRequest(Command.Engage, service);
+    public async engageService(service: Handle): Promise<void> {
+        await this.performRequest<void>(Command.Engage, service);
     }
 
-    public async adjustService(service: Handle) : Promise<void> {
-        await this.performRequest(Command.Adjust, service);
+    public async adjustService(service: Handle): Promise<void> {
+        await this.performRequest<void>(Command.Adjust, service);
     }
 
-    public async statusService(service: Handle) : Promise<Health> {
-        return await this.performRequest(Command.Status, service);
+    public async statusService(service: Handle): Promise<Health> {
+        return await this.performRequest<Health>(Command.Status, service);
     }
 
-    public async reviewService(service: Handle) : Promise<Report> {
-        return await this.performRequest(Command.Review, service);
+    public async reviewService(service: Handle): Promise<Report> {
+        return await this.performRequest<Report>(Command.Review, service);
     }
 }
