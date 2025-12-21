@@ -2,7 +2,7 @@
   "name": "file-mutex",
   "version": "1.0.0",
   "description": "N-API file locking module compatible with boost::interprocess",
-  "main": "index.ts",
+  "main": "index.js",
   "typings": "index.d.ts",
   "gypfile": true,
   "files": [

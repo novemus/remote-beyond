@@ -2,7 +2,7 @@ import { expect } from 'chai';
 import { describe, it } from 'mocha';
 import { isNetworkEndpoint, isIPv4Endpoint, isNetworkEndpointList, isValidPierName } from '../utils';
 
-describe('isNetworkEndpoint', () => {
+describe('Extension Utils Tests', () => {
   it('check for empty string or null/undefined endpoint', () => {
     expect(isNetworkEndpoint('')).to.be.false;
     expect(isNetworkEndpoint(null as any)).to.be.false;
@@ -49,12 +49,12 @@ describe('isNetworkEndpoint', () => {
     expect(isNetworkEndpoint('#example.com')).to.be.false;
   });
 
-  it('check for valid endpoint list', () => {
+  it('check for correct endpoint list', () => {
     expect(isNetworkEndpointList('[2001:db8::1]:8080,[2001:db8::1],[fe80::881a:e83f:3ec5:186c],[::1],192.168.1.1:80,10.0.0.1')).to.be.true;
     expect(isNetworkEndpointList('example.com:3000,localhost,test-site.org,example.com:8080,example.com:80,[::1],192.168.1.1:80')).to.be.true;
   });
 
-  it('check for invalid endpoint list', () => {
+  it('check for incorrect endpoint list', () => {
     expect(isNetworkEndpointList('[2001:db8::1]:8080,test-site.org,example.com:99999')).to.be.false;
     expect(isNetworkEndpointList('[2001:db8::1]:8080,')).to.be.false;
     expect(isNetworkEndpointList(',,')).to.be.false;

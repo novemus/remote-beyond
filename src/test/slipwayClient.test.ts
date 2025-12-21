@@ -3,6 +3,7 @@ import { describe, it, beforeEach, afterEach } from 'mocha';
 import * as net from 'net';
 import * as path from 'path';
 import * as os from 'os';
+import * as fs from 'fs';
 import * as utils from '../utils';
 import { Handle, Health, Tunnel, Report, Slipway, Status, Command } from '../slipwayClient';
 
@@ -58,11 +59,11 @@ function getTestSocketPath(home: string): string {
     if (os.platform() === 'win32') {
         return `\\\\.\\pipe\\${hash}.slipway`;
     } else {
-        return path.join(os.tmpdir(), `${hash}.slipway`);
+        return path.join(fs.existsSync('/tmp') ? '/tmp' : os.tmpdir(), `${hash}.slipway`);
     }
 }
 
-describe('Slipway Integration Tests', () => {
+describe('Slipway Client Tests', () => {
     const testHome = '/test/home';
     const socketPath = getTestSocketPath(testHome);
     let mockServer: MockServer;

@@ -1,12 +1,12 @@
 import * as os from 'os';
-import * as fs from 'node:fs';
+import * as fs from 'fs';
 import * as path from 'path';
 import { expect } from 'chai';
 import { describe, before, after, it } from 'mocha';
-import { Context, Logging, Nat, Dht, Email, Service } from '../webpierContext';
+import { Context, Logging, Nat, Dht, Email, Service, Offer, saveOffer, loadOffer } from '../webpierContext';
 import { makeTextHash } from '../utils';
 
-describe('Context', () => {
+describe('Webpier Context Tests', () => {
     let local: string = 'local/server';
     let remote: string = 'remote/client';
     let home: string;
@@ -15,11 +15,14 @@ describe('Context', () => {
     before(async () => {
         home = path.join(os.tmpdir(), 'webpier-test', new Date().getTime().toString());
         context = new Context(home);
-        
-        expect(fs.existsSync(home)).to.be.true;
-
         await context.init(local);
+    });
 
+    after(() => {
+        fs.rmSync(home, { recursive: true });
+    });
+
+    it('check empty context', async () => {
         const config = context.getConfig();
 
         expect(config.pier).to.deep.equal(local);
@@ -49,10 +52,6 @@ describe('Context', () => {
         await context.load();
 
         expect(context.getConfig()).to.deep.equal(config);
-    });
-
-    after(() => {
-        fs.rmdirSync(home, { recursive: true });
     });
 
     it('check reinit context', async () => {
@@ -125,5 +124,22 @@ describe('Context', () => {
         expect(fs.existsSync(path.join(config.repo, remote, 'cert.crt'))).to.be.false;
         expect(fs.existsSync(path.join(config.repo, remote, 'webpier.json'))).to.be.false;
         expect(context.getCertificate(remote)).to.deep.equal('');
+    });
+
+    it('check offers exchange', async () => {
+        let service = new Service(true);
+        service.name = 'web';
+        service.pier = local;
+        service.address = '127.0.0.1:80';
+
+        let outcome = new Offer();
+        outcome.pier = local;
+        outcome.certificate = context.getCertificate(local);
+        outcome.services = [{ name: service.name, obscure: service.obscure, rendezvous: service.rendezvous }];
+
+        await saveOffer(path.join(home, 'webpier.offer'), outcome);
+        const income = await loadOffer(path.join(home, 'webpier.offer'));
+
+        expect(outcome).to.deep.equal(income);
     });
 });
