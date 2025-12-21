@@ -123,15 +123,15 @@ class Message {
         if (info.error) {
             return new Message(action, info.error);
         } else if (info.health && action === Command.Status) {
-            const healths = Array.isArray(info.health)
+            const payload = Array.isArray(info.health)
                 ? Health.parseArray(info.health)
                 : Health.parseOne(info.health);
-            return new Message(action, healths);
+            return new Message(action, payload);
         } else if (info.report && action === Command.Review) {
-            const reports = Array.isArray(info.report)
+            const payload = Array.isArray(info.report)
                 ? Report.parseArray(info.report)
                 : Report.parseOne(info.report);
-            return new Message(action, reports);
+            return new Message(action, payload);
         }
 
         return new Message(action);
@@ -270,11 +270,13 @@ export class Slipway {
     }
 
     public async statusAll(): Promise<Health[]> {
-        return await this.performRequest<Health[]>(Command.Status);
+        const res = await this.performRequest<Health[]>(Command.Status);
+        return res ? res : [];
     }
 
     public async reviewAll(): Promise<Report[]> {
-        return await this.performRequest<Report[]>(Command.Review);
+        const res = await this.performRequest<Report[]>(Command.Review);
+        return res ? res : [];
     }
 
     public async unplugService(service: Handle): Promise<void> {

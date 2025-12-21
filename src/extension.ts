@@ -400,7 +400,7 @@ class Controller {
 				}
 			}
 		} catch (err) {
-			utils.onError(`Could not refresh webpier context. ${err}`);
+			utils.onError(`Could not load offer. ${err}`);
 		}
 	}
 
@@ -444,7 +444,7 @@ class Controller {
 				}
 			}
 		} catch (err) {
-			utils.onError(`Could not refresh webpier context. ${err}`);
+			utils.onError(`Could not save offer. ${err}`);
 		}
 	}
 
