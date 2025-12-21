@@ -140,7 +140,11 @@ class Controller {
 				vscode.commands.executeCommand('remote-beyond.openContextEditor');
 			}
 		} catch (err) {
-			utils.onError(`Could not init webpier context. ${err}`);
+			if (err instanceof webpier.ModuleNotFound) {
+				vscode.window.showErrorMessage(`It looks like the WebPier application is not installed. ${err}`);
+			} else {
+				utils.onError(`Can't init webpier context. ${err}`);
+			}
 		}
 	}
 
@@ -297,7 +301,7 @@ class Controller {
 	async deleteService(item: WebpierService) : Promise<void> {
 		try {
 			const pier = item.root.remote ? item.pier : this.webpierContext.getPier();
-			const answer = await vscode.window.showInformationMessage(
+			const answer = await vscode.window.showWarningMessage(
 				`Do you want to remove ${item.root.remote ? 'import' : 'export'} service '${item.name}'?`,
 				'Yes', 'No'
 			);

@@ -7,6 +7,12 @@ import * as reg from '@vscode/windows-registry';
 import * as utils from './utils';
 import { FileMutex } from '../modules/file-mutex';
 
+export class ModuleNotFound extends Error {
+  constructor(name: string) {
+    super(`Could not find path to the module: ${name}`);
+  }
+}
+
 export enum Logging {
     None,
     Fatal,
@@ -421,7 +427,7 @@ export function getModulePath(name: string) : string {
         if (path) {
             return path;
         }
-    } else {
+    } else if (fs.existsSync(conf)) {
         const data = fs.readFileSync(conf, { encoding: 'utf-8' });
         for(const line of data.split('\n')) {
             if (line.startsWith(name + '=')) {
@@ -429,7 +435,7 @@ export function getModulePath(name: string) : string {
             }
         }
     }
-    throw Error(`Could not find path to module: ${name}`);
+    throw new ModuleNotFound(name);
 }
 
 function fetchTask(slipway: string, home: string) : string {
