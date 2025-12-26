@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import * as os from 'os';
 import * as child from 'child_process';
 import * as fs from 'fs';
+import * as path from 'path';
 import * as forge from 'node-forge';
 import * as reg from '@vscode/windows-registry';
 import * as utils from './utils';
@@ -168,22 +169,22 @@ export class Context {
         if (!fs.existsSync(this.home)) {
 			fs.mkdirSync(this.home, { recursive: true });
 		}
-        this.locker = new FileMutex(this.home + '/webpier.lock');
+        this.locker = new FileMutex(path.join(this.home, 'webpier.lock'));
     }
 
     public async init(pier: string) {
         this.config.pier = pier;
-        this.config.repo = this.home + '/' + utils.makeTextHash(pier);
+        this.config.repo = path.join(this.home, utils.makeTextHash(pier));
 
         this.services = new Map<string, Service[]>();
 
-        if (fs.existsSync(this.config.repo + '/' + pier + '/private.key')) {
+        if (fs.existsSync(path.join(this.config.repo, pier, 'private.key'))) {
             this.locker.hardLock();
-            await utils.writeJsonFile(this.home + '/webpier.json', this.config);
+            await utils.writeJsonFile(path.join(this.home, 'webpier.json'), this.config);
             this.locker.freeLock();
             await this.load();
         } else {
-            this.config.log.folder = this.home + '/journal';
+            this.config.log.folder = path.join(this.home, 'journal');
             this.config.log.level = Logging.Debug;
 
             this.services.set(pier, []);
@@ -211,11 +212,11 @@ export class Context {
             fs.mkdirSync(this.config.log.folder, { recursive: true });
 
             this.locker.hardLock();
-            await utils.writeJsonFile(this.home + '/webpier.json', this.config);
+            await utils.writeJsonFile(path.join(this.home, 'webpier.json'), this.config);
             try {
-                fs.mkdirSync(this.config.repo + '/' + pier, { recursive: true });
-                fs.writeFileSync(this.config.repo + '/' + pier + '/cert.crt', forge.pki.certificateToPem(cert));
-                fs.writeFileSync(this.config.repo + '/' + pier + '/private.key', forge.pki.privateKeyToPem(privateKey), { mode: 0o600 });
+                fs.mkdirSync(path.join(this.config.repo, pier), { recursive: true });
+                fs.writeFileSync(path.join(this.config.repo, pier, 'cert.crt'), forge.pki.certificateToPem(cert));
+                fs.writeFileSync(path.join(this.config.repo, pier, 'private.key'), forge.pki.privateKeyToPem(privateKey), { mode: 0o600 });
             } finally {
                 this.locker.freeLock();
             }
@@ -225,15 +226,15 @@ export class Context {
     public async load() : Promise<void> {
         this.locker.softLock();
         try {
-            this.config = Config.parse(await utils.readJsonFile(this.home + '/webpier.json'));
+            this.config = Config.parse(await utils.readJsonFile(path.join(this.home, 'webpier.json')));
             this.services.set(this.config.pier, []);
             for(const email of fs.readdirSync(this.config.repo, { withFileTypes: true })) {
                 if (email.isDirectory()) {
-                    for(const host of fs.readdirSync(email.parentPath + '/' + email.name, { withFileTypes: true })) {
+                    for(const host of fs.readdirSync(path.join(email.parentPath, email.name), { withFileTypes: true })) {
                         const pier = email.name + '/' + host.name;
-                        const cert = this.config.repo + '/' + pier + '/cert.crt';
+                        const cert = path.join(this.config.repo, pier, 'cert.crt');
                         if (fs.existsSync(cert)) {
-                            const conf = this.config.repo + '/' + pier + '/webpier.json';
+                            const conf = path.join(this.config.repo, pier, 'webpier.json');
                             if (fs.existsSync(conf)) {
                                 const config = await utils.readJsonFile(conf);
                                 this.services.set(pier, Service.parseArray(config.services));
@@ -274,7 +275,7 @@ export class Context {
         } else {
             this.locker.hardLock();
             try {
-                await utils.writeJsonFile(this.home + '/webpier.json', this.config);
+                await utils.writeJsonFile(path.join(this.home, 'webpier.json'), this.config);
             } finally {
                 this.locker.freeLock();
             }
@@ -283,8 +284,8 @@ export class Context {
 
     public getServices() : Map<string, Service[]> {
         const result = new Map<string, Service[]>();
-        this.services.forEach((services, pier) => {
-            result.set(pier, JSON.parse(JSON.stringify(services)));
+        this.services.forEach((arr, pier) => {
+            result.set(pier, JSON.parse(JSON.stringify(arr)));
         });
         return result;
     }
@@ -336,7 +337,7 @@ export class Context {
             this.services.set(pier, services);
             this.locker.hardLock();
             try {
-                await utils.writeJsonFile(this.config.repo + '/' + pier + '/webpier.json', { services });
+                await utils.writeJsonFile(path.join(this.config.repo, pier, 'webpier.json'), { services });
             } finally {
                 this.locker.freeLock();
             }
@@ -352,7 +353,7 @@ export class Context {
             this.services.set(pier, services);
             this.locker.hardLock();
             try {
-                await utils.writeJsonFile(this.config.repo + '/' + pier + '/webpier.json', { services });
+                await utils.writeJsonFile(path.join(this.config.repo, pier, 'webpier.json'), { services });
             } finally {
                 this.locker.freeLock();
             }
@@ -370,13 +371,13 @@ export class Context {
     }
 
     public addRemote(pier: string, cert: string) {
-        const dir = this.config.repo + '/' + pier;
+        const dir = path.join(this.config.repo, pier);
         if (pier !== this.config.pier && !fs.existsSync(dir)) {
             this.services.set(pier, []);
             this.locker.hardLock();
             try {
                 fs.mkdirSync(dir, { recursive: true });
-                fs.writeFileSync(dir + '/cert.crt', cert);
+                fs.writeFileSync(path.join(dir, 'cert.crt'), cert);
             } finally {
                 this.locker.freeLock();
             }
@@ -389,7 +390,7 @@ export class Context {
         if (pier === this.config.pier) {
             throw new Error('Wrong pier');
         }
-        const dir = this.config.repo + '/' + pier;
+        const dir = path.join(this.config.repo, pier);
         if (fs.existsSync(dir)) {
             this.locker.hardLock();
             try {
@@ -402,9 +403,9 @@ export class Context {
     }
 
     public getCertificate(pier: string) : string {
-        const path = this.config.repo + '/' + pier + '/cert.crt';
-        if (fs.existsSync(path)) {
-            return fs.readFileSync(this.config.repo + '/' + pier + '/cert.crt', { encoding: 'utf-8' });
+        const cert = path.join(this.config.repo,  pier, 'cert.crt');
+        if (fs.existsSync(cert)) {
+            return fs.readFileSync(path.join(this.config.repo, pier, 'cert.crt'), { encoding: 'utf-8' });
         }
         return '';
     }
@@ -551,7 +552,7 @@ export function assignAutostart(home: string) {
 </Task>`.replace(/\r?\n/g, '\r\n');
 
         const id = utils.makeTextHash(slipway + home);
-        const xml = os.tmpdir()  + '\\' + id + '.xml';
+        const xml = path.join(os.tmpdir(), id + '.xml');
 
         fs.writeFileSync(xml, config, { encoding: 'utf-8' });
 
