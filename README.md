@@ -61,6 +61,12 @@ Once you have exchanged offers, you can configure services manually. Now you can
 
 ![adopt](https://raw.githubusercontent.com/novemus/remote-beyond/master/resources/buttons.png)
 
+Be patient, it takes some time to establish a connection through the NAT.
+
+## Bugs and improvements
+
+If you encounter a bug and want to help fix it, create an issue in the [remote-beyond](https://github.com/novemus/remote-beyond/issues) repository.
+
 ## Home
 
 [Remote-Beyond](https://github.com/novemus/remote-beyond) extension repository.
